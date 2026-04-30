@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
+from sqlalchemy.orm import relationship
 import uuid
 from core.database import Base
 
@@ -13,3 +14,5 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")

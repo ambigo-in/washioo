@@ -3,8 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.security import decode_token
-from models.user import User
-
+from repositories.user_repository import get_user_with_roles
 
 security = HTTPBearer()
 
@@ -22,12 +21,13 @@ def get_current_user(
         )
 
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
 
-    if not user:
+    user = get_user_with_roles(db, user_id)
+
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="User not found or inactive"
         )
 
     return user
