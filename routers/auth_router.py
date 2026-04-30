@@ -25,12 +25,20 @@ def send_otp_api(payload: SendOTPRequest, db: Session = Depends(get_db)):
 @router.post("/signup")
 def signup(payload: SignupRequest, db: Session = Depends(get_db)):
     try:
+        # Check if user already exists
+        existing_user = get_user_by_phone(db, payload.phone_number)
+        is_new_user = not existing_user
+        
         access, refresh = signup_user(db, payload)
+        
+        message = "User created successfully" if is_new_user else f"Role '{payload.role}' added successfully to existing account"
+        
         return {
-            "message": "User created successfully",
+            "message": message,
             "access_token": access,
             "refresh_token": refresh,
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "is_new_user": is_new_user
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -23,3 +23,11 @@ def get_user_roles(db, user_id):
         return []
 
     return [ur.role.role_name for ur in user.user_roles]
+
+def user_has_role(db, user_id, role_name: str):
+    """Check if user already has a specific role"""
+    user = get_user_with_roles(db, user_id)
+    if not user:
+        return False
+    
+    return any(ur.role.role_name == role_name.lower() for ur in user.user_roles)
