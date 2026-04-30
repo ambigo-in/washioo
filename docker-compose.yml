@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: washioo_postgres
+    environment:
+      POSTGRES_USER: washioo_user
+      POSTGRES_PASSWORD: washioo_password
+      POSTGRES_DB: washioo_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - washioo_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U washioo_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: washioo_api
+    environment:
+      DATABASE_URL: postgresql://washioo_user:washioo_password@postgres:5432/washioo_db
+      DEBUG: "False"
+      ENVIRONMENT: production
+      SECRET_KEY: your-secret-key-here-change-in-production
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - washioo_network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  postgres_data:
+
+networks:
+  washioo_network:
+    driver: bridge
