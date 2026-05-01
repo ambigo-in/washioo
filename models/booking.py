@@ -24,3 +24,4 @@ class Booking(Base):
     customer = relationship("User", foreign_keys=[customer_id])
     service_category = relationship("ServiceCategory", back_populates="bookings")
     address = relationship("Address")
+    assignment = relationship("BookingAssignment", back_populates="booking", uselist=False, cascade="all, delete-orphan")

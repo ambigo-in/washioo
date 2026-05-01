@@ -29,3 +29,12 @@ def update_service(db, service_id, service_data):
         db.commit()
         db.refresh(service)
     return service
+
+def delete_service(db, service_id):
+    """Soft delete service by marking it inactive"""
+    service = db.query(ServiceCategory).filter(ServiceCategory.id == service_id).first()
+    if service:
+        service.is_active = False
+        db.commit()
+        db.refresh(service)
+    return service

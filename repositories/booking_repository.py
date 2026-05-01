@@ -16,7 +16,8 @@ def get_booking_by_id(db, booking_id):
         .options(
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
-            joinedload(Booking.address)
+            joinedload(Booking.address),
+            joinedload(Booking.assignment)
         )
         .filter(Booking.id == booking_id)
         .first()
@@ -32,7 +33,8 @@ def get_customer_bookings(db, customer_id):
         db.query(Booking)
         .options(
             joinedload(Booking.service_category),
-            joinedload(Booking.address)
+            joinedload(Booking.address),
+            joinedload(Booking.assignment)
         )
         .filter(Booking.customer_id == customer_id)
         .order_by(Booking.created_at.desc())
@@ -46,7 +48,8 @@ def get_all_bookings(db):
         .options(
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
-            joinedload(Booking.address)
+            joinedload(Booking.address),
+            joinedload(Booking.assignment)
         )
         .order_by(Booking.created_at.desc())
         .all()
@@ -58,11 +61,26 @@ def get_bookings_by_status(db, status):
         db.query(Booking)
         .options(
             joinedload(Booking.customer),
-            joinedload(Booking.service_category)
+            joinedload(Booking.service_category),
+            joinedload(Booking.address),
+            joinedload(Booking.assignment)
         )
         .filter(Booking.booking_status == status)
         .order_by(Booking.created_at.desc())
         .all()
+    )
+
+def get_customer_booking_by_id(db, customer_id, booking_id):
+    """Get one booking that belongs to a customer"""
+    return (
+        db.query(Booking)
+        .options(
+            joinedload(Booking.service_category),
+            joinedload(Booking.address),
+            joinedload(Booking.assignment)
+        )
+        .filter(Booking.id == booking_id, Booking.customer_id == customer_id)
+        .first()
     )
 
 def update_booking_status(db, booking_id, status):

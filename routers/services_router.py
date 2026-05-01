@@ -1,24 +1,56 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from schemas.booking_schema import CreateBookingRequest, CreateAddressRequest
+from schemas.booking_schema import (
+    AdminUpdateBookingRequest,
+    AssignBookingRequest,
+    CancelBookingRequest,
+    CleanerAssignmentActionRequest,
+    CompleteAssignmentRequest,
+    CreateAddressRequest,
+    CreateBookingRequest,
+    CreateCleanerProfileRequest,
+    CreateServiceRequest,
+    UpdateAddressRequest,
+    UpdateBookingRequest,
+    UpdateCleanerAvailabilityRequest,
+    UpdateCleanerProfileRequest,
+    UpdateServiceRequest,
+)
 from core.database import get_db
-from core.dependencies import get_current_user
 from core.role_dependencies import require_roles
-from repositories.service_repository import get_all_services
-from repositories.address_repository import create_address, get_user_addresses
+from repositories.service_repository import get_all_services, get_service_by_id, create_service, update_service, delete_service
+from repositories.address_repository import create_address, get_user_addresses, get_address_by_id, update_address, delete_address
 from services.booking_service import (
     create_new_booking, get_customer_bookings_service, 
-    get_all_bookings_service, format_admin_booking, format_customer_booking
+    get_all_bookings_service, format_admin_booking, format_customer_booking,
+    get_customer_booking_service, update_customer_booking_service,
+    cancel_customer_booking_service, get_admin_booking_service,
+    update_admin_booking_service, create_cleaner_profile_service,
+    get_or_create_cleaner_profile_service,
+    list_cleaner_profiles_service, get_cleaner_profile_service,
+    update_cleaner_profile_service, delete_cleaner_profile_service,
+    update_current_cleaner_availability_service, assign_booking_to_cleaner_service,
+    list_cleaner_assignments_service, list_all_assignments_service,
+    get_cleaner_assignment_service, accept_assignment_service,
+    reject_assignment_service, start_assignment_service,
+    complete_assignment_service, format_cleaner_profile, format_assignment
 )
 
 
-router = APIRouter(prefix="/services", tags=["Services & Bookings"])
+PUBLIC_TAG = "Public APIs"
+CUSTOMER_TAG = "Customer APIs"
+CLEANER_TAG = "Cleaner APIs"
+ADMIN_TAG = "Admin APIs"
+ADDRESS_TAG = "Address APIs"
+
+
+router = APIRouter(prefix="/services")
 
 # ============================================================
 # SERVICE ENDPOINTS
 # ============================================================
 
-@router.get("/")
+@router.get("/", tags=[PUBLIC_TAG])
 def get_services(db: Session = Depends(get_db)):
     """Get all available services"""
     try:
@@ -43,19 +75,105 @@ def get_services(db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/service-categories/{service_id}", tags=[PUBLIC_TAG])
+def get_service_category(service_id: str, db: Session = Depends(get_db)):
+    """Get one service category"""
+    service = get_service_by_id(db, service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return {
+        "message": "Service fetched successfully",
+        "service": {
+            "id": str(service.id),
+            "service_name": service.service_name,
+            "description": service.description,
+            "base_price": float(service.base_price),
+            "estimated_duration_minutes": service.estimated_duration_minutes,
+            "is_active": service.is_active
+        }
+    }
+
+
+@router.post("/admin/service-categories", tags=[ADMIN_TAG])
+def create_service_category_admin(
+    payload: CreateServiceRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin create service category"""
+    try:
+        service = create_service(db, payload.model_dump(exclude_unset=True))
+        return {
+            "message": "Service created successfully",
+            "service": {
+                "id": str(service.id),
+                "service_name": service.service_name,
+                "description": service.description,
+                "base_price": float(service.base_price),
+                "estimated_duration_minutes": service.estimated_duration_minutes,
+                "is_active": service.is_active
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/admin/service-categories/{service_id}", tags=[ADMIN_TAG])
+def update_service_category_admin(
+    service_id: str,
+    payload: UpdateServiceRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin update service category"""
+    service = update_service(db, service_id, payload.model_dump(exclude_unset=True))
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return {
+        "message": "Service updated successfully",
+        "service": {
+            "id": str(service.id),
+            "service_name": service.service_name,
+            "description": service.description,
+            "base_price": float(service.base_price),
+            "estimated_duration_minutes": service.estimated_duration_minutes,
+            "is_active": service.is_active
+        }
+    }
+
+
+@router.delete("/admin/service-categories/{service_id}", tags=[ADMIN_TAG])
+def delete_service_category_admin(
+    service_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin soft delete service category"""
+    service = delete_service(db, service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    return {
+        "message": "Service deactivated successfully",
+        "service_id": str(service.id)
+    }
+
+
 # ============================================================
 # ADDRESS ENDPOINTS
 # ============================================================
 
-@router.post("/address")
+@router.post("/address", tags=[ADDRESS_TAG, CUSTOMER_TAG])
 def create_user_address(
     payload: CreateAddressRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_roles(["customer"]))
 ):
     """Create a new address for customer"""
     try:
-        address_data = payload.dict()
+        address_data = payload.model_dump()
         address_data["user_id"] = current_user.id
         
         address = create_address(db, address_data)
@@ -79,10 +197,10 @@ def create_user_address(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/addresses")
+@router.get("/addresses", tags=[ADDRESS_TAG, CUSTOMER_TAG])
 def get_user_addresses_api(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_roles(["customer"]))
 ):
     """Get all addresses for current user"""
     try:
@@ -113,11 +231,59 @@ def get_user_addresses_api(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.patch("/address/{address_id}", tags=[ADDRESS_TAG, CUSTOMER_TAG])
+def update_user_address(
+    address_id: str,
+    payload: UpdateAddressRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"]))
+):
+    """Update current user's address"""
+    address = get_address_by_id(db, address_id)
+    if not address or address.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    updated = update_address(db, address_id, payload.model_dump(exclude_unset=True))
+    return {
+        "message": "Address updated successfully",
+        "address": {
+            "id": str(updated.id),
+            "address_label": updated.address_label,
+            "address_line1": updated.address_line1,
+            "address_line2": updated.address_line2,
+            "landmark": updated.landmark,
+            "city": updated.city,
+            "state": updated.state,
+            "pincode": updated.pincode,
+            "country": updated.country,
+            "is_default": updated.is_default
+        }
+    }
+
+
+@router.delete("/address/{address_id}", tags=[ADDRESS_TAG, CUSTOMER_TAG])
+def delete_user_address(
+    address_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"]))
+):
+    """Delete current user's address"""
+    address = get_address_by_id(db, address_id)
+    if not address or address.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Address not found")
+
+    delete_address(db, address_id)
+    return {
+        "message": "Address deleted successfully",
+        "address_id": address_id
+    }
+
+
 # ============================================================
 # BOOKING ENDPOINTS - CUSTOMER
 # ============================================================
 
-@router.post("/book")
+@router.post("/book", tags=[CUSTOMER_TAG])
 def book_service(
     payload: CreateBookingRequest,
     db: Session = Depends(get_db),
@@ -144,7 +310,7 @@ def book_service(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/my-bookings")
+@router.get("/my-bookings", tags=[CUSTOMER_TAG])
 def get_my_bookings(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(["customer"]))
@@ -164,11 +330,64 @@ def get_my_bookings(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/my-bookings/{booking_id}", tags=[CUSTOMER_TAG])
+def get_my_booking_details(
+    booking_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"]))
+):
+    """Get customer's booking details"""
+    try:
+        booking = get_customer_booking_service(db, current_user.id, booking_id)
+        return {
+            "message": "Booking fetched successfully",
+            "booking": format_customer_booking(booking)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/my-bookings/{booking_id}", tags=[CUSTOMER_TAG])
+def update_my_booking(
+    booking_id: str,
+    payload: UpdateBookingRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"]))
+):
+    """Update customer booking before assignment"""
+    try:
+        booking = update_customer_booking_service(db, current_user.id, booking_id, payload)
+        return {
+            "message": "Booking updated successfully",
+            "booking": format_customer_booking(booking)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/my-bookings/{booking_id}/cancel", tags=[CUSTOMER_TAG])
+def cancel_my_booking(
+    booking_id: str,
+    payload: CancelBookingRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"]))
+):
+    """Cancel customer booking"""
+    try:
+        booking = cancel_customer_booking_service(db, current_user.id, booking_id)
+        return {
+            "message": "Booking cancelled successfully",
+            "booking": format_customer_booking(booking)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ============================================================
 # BOOKING ENDPOINTS - ADMIN
 # ============================================================
 
-@router.get("/admin/all-bookings")
+@router.get("/admin/all-bookings", tags=[ADMIN_TAG])
 def get_all_bookings_admin(
     db: Session = Depends(get_db),
     current_admin=Depends(require_roles(["admin"]))
@@ -188,7 +407,80 @@ def get_all_bookings_admin(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/admin/bookings-by-status/{status}")
+@router.get("/admin/bookings/{booking_id}", tags=[ADMIN_TAG])
+def get_booking_admin(
+    booking_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin view one booking"""
+    try:
+        booking = get_admin_booking_service(db, booking_id)
+        return {
+            "message": "Booking fetched successfully",
+            "booking": format_admin_booking(booking)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/admin/bookings/{booking_id}", tags=[ADMIN_TAG])
+def update_booking_admin(
+    booking_id: str,
+    payload: AdminUpdateBookingRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin update booking"""
+    try:
+        booking = update_admin_booking_service(db, booking_id, payload)
+        return {
+            "message": "Booking updated successfully",
+            "booking": format_admin_booking(booking)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/admin/customers/{customer_id}/bookings", tags=[ADMIN_TAG])
+def get_customer_bookings_admin(
+    customer_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin view bookings for a particular customer"""
+    try:
+        bookings = get_customer_bookings_service(db, customer_id)
+        bookings_list = [format_customer_booking(booking) for booking in bookings]
+        return {
+            "message": "Customer bookings fetched successfully",
+            "customer_id": customer_id,
+            "bookings": bookings_list,
+            "total": len(bookings_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/admin/bookings/{booking_id}/assign", tags=[ADMIN_TAG])
+def assign_booking_admin(
+    booking_id: str,
+    payload: AssignBookingRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin assign or reassign a booking to a cleaner"""
+    try:
+        assignment = assign_booking_to_cleaner_service(db, booking_id, current_admin.id, payload)
+        return {
+            "message": "Booking assigned successfully",
+            "assignment": format_assignment(assignment)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/admin/bookings-by-status/{status}", tags=[ADMIN_TAG])
 def get_bookings_by_status_admin(
     status: str,
     db: Session = Depends(get_db),
@@ -214,6 +506,263 @@ def get_bookings_by_status_admin(
             "status": status,
             "bookings": bookings_list,
             "total": len(bookings_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
+# CLEANER PROFILE ENDPOINTS
+# ============================================================
+
+@router.post("/admin/cleaners", tags=[ADMIN_TAG])
+def create_cleaner_profile_admin(
+    payload: CreateCleanerProfileRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin create cleaner profile for a user with cleaner role"""
+    try:
+        cleaner = create_cleaner_profile_service(db, payload)
+        return {
+            "message": "Cleaner profile created successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/admin/cleaners", tags=[ADMIN_TAG])
+def list_cleaners_admin(
+    approval_status: str | None = None,
+    availability_status: str | None = None,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin list cleaner profiles"""
+    try:
+        cleaners = list_cleaner_profiles_service(db, approval_status, availability_status)
+        cleaner_list = [format_cleaner_profile(cleaner) for cleaner in cleaners]
+        return {
+            "message": "Cleaners fetched successfully",
+            "cleaners": cleaner_list,
+            "total": len(cleaner_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
+def get_cleaner_admin(
+    cleaner_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin get cleaner profile"""
+    try:
+        cleaner = get_cleaner_profile_service(db, cleaner_id)
+        return {
+            "message": "Cleaner fetched successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
+def update_cleaner_admin(
+    cleaner_id: str,
+    payload: UpdateCleanerProfileRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin update cleaner profile"""
+    try:
+        cleaner = update_cleaner_profile_service(db, cleaner_id, payload)
+        return {
+            "message": "Cleaner updated successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
+def delete_cleaner_admin(
+    cleaner_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin delete cleaner profile"""
+    try:
+        delete_cleaner_profile_service(db, cleaner_id)
+        return {
+            "message": "Cleaner profile deleted successfully",
+            "cleaner_id": cleaner_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/cleaner/profile", tags=[CLEANER_TAG])
+def get_current_cleaner_profile(
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner view own profile"""
+    try:
+        cleaner = get_or_create_cleaner_profile_service(db, current_cleaner.id)
+        return {
+            "message": "Cleaner profile fetched successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/cleaner/availability", tags=[CLEANER_TAG])
+def update_current_cleaner_availability(
+    payload: UpdateCleanerAvailabilityRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner update own availability"""
+    try:
+        cleaner = update_current_cleaner_availability_service(db, current_cleaner.id, payload)
+        return {
+            "message": "Availability updated successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
+# ASSIGNMENT ENDPOINTS
+# ============================================================
+
+@router.get("/admin/assignments", tags=[ADMIN_TAG])
+def list_assignments_admin(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin list all assignments"""
+    try:
+        assignments = list_all_assignments_service(db, status)
+        assignment_list = [format_assignment(assignment) for assignment in assignments]
+        return {
+            "message": "Assignments fetched successfully",
+            "assignments": assignment_list,
+            "total": len(assignment_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/cleaner/assignments", tags=[CLEANER_TAG])
+def list_cleaner_assignments(
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner fetch assigned bookings/services"""
+    try:
+        assignments = list_cleaner_assignments_service(db, current_cleaner.id, status)
+        assignment_list = [format_assignment(assignment) for assignment in assignments]
+        return {
+            "message": "Cleaner assignments fetched successfully",
+            "assignments": assignment_list,
+            "total": len(assignment_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/cleaner/assignments/{assignment_id}", tags=[CLEANER_TAG])
+def get_cleaner_assignment(
+    assignment_id: str,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner fetch one assigned booking/service"""
+    try:
+        assignment = get_cleaner_assignment_service(db, current_cleaner.id, assignment_id)
+        return {
+            "message": "Assignment fetched successfully",
+            "assignment": format_assignment(assignment)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/cleaner/assignments/{assignment_id}/accept", tags=[CLEANER_TAG])
+def accept_assignment(
+    assignment_id: str,
+    payload: CleanerAssignmentActionRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner accept assigned service"""
+    try:
+        assignment = accept_assignment_service(db, current_cleaner.id, assignment_id, payload)
+        return {
+            "message": "Assignment accepted successfully",
+            "assignment": format_assignment(assignment)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/assignments/{assignment_id}/reject", tags=[CLEANER_TAG])
+def reject_assignment(
+    assignment_id: str,
+    payload: CleanerAssignmentActionRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner reject assigned service"""
+    try:
+        assignment = reject_assignment_service(db, current_cleaner.id, assignment_id, payload)
+        return {
+            "message": "Assignment rejected successfully",
+            "assignment": format_assignment(assignment)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/assignments/{assignment_id}/start", tags=[CLEANER_TAG])
+def start_assignment(
+    assignment_id: str,
+    payload: CleanerAssignmentActionRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner start accepted service"""
+    try:
+        assignment = start_assignment_service(db, current_cleaner.id, assignment_id, payload)
+        return {
+            "message": "Assignment started successfully",
+            "assignment": format_assignment(assignment)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/assignments/{assignment_id}/complete", tags=[CLEANER_TAG])
+def complete_assignment(
+    assignment_id: str,
+    payload: CompleteAssignmentRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner complete in-progress service"""
+    try:
+        assignment = complete_assignment_service(db, current_cleaner.id, assignment_id, payload)
+        return {
+            "message": "Assignment completed successfully",
+            "assignment": format_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

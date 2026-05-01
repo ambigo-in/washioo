@@ -9,6 +9,7 @@ def save_refresh_token(db, user_id, token_hash, expires_at):
     )
     db.add(token)
     db.commit()
+    db.refresh(token)
     return token
 
 def revoke_token(db, token_hash):
@@ -20,5 +21,6 @@ def revoke_token(db, token_hash):
 def get_refresh_token(db, token_hash):
     return db.query(RefreshToken).filter(
         RefreshToken.token_hash == token_hash,
-        RefreshToken.revoked_at == None
+        RefreshToken.revoked_at == None,
+        RefreshToken.expires_at > datetime.utcnow()
     ).first()

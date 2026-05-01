@@ -16,3 +16,4 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
+    cleaner_profile = relationship("CleanerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

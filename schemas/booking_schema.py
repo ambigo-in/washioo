@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, time
-from typing import Optional
+from typing import Literal, Optional
 from decimal import Decimal
 
 class AddressSchema(BaseModel):
@@ -30,6 +30,33 @@ class CreateAddressRequest(BaseModel):
     longitude: Optional[float] = None
     is_default: Optional[bool] = False
 
+class UpdateAddressRequest(BaseModel):
+    address_label: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    landmark: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    is_default: Optional[bool] = None
+
+class CreateServiceRequest(BaseModel):
+    service_name: str
+    description: Optional[str] = None
+    base_price: Decimal
+    estimated_duration_minutes: Optional[int] = None
+    is_active: Optional[bool] = True
+
+class UpdateServiceRequest(BaseModel):
+    service_name: Optional[str] = None
+    description: Optional[str] = None
+    base_price: Optional[Decimal] = None
+    estimated_duration_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+
 class ServiceCategorySchema(BaseModel):
     id: str
     service_name: str
@@ -48,6 +75,50 @@ class CreateBookingRequest(BaseModel):
     scheduled_date: date
     scheduled_time: time
     special_instructions: Optional[str] = None
+
+class UpdateBookingRequest(BaseModel):
+    service_category_id: Optional[str] = None
+    address_id: Optional[str] = None
+    scheduled_date: Optional[date] = None
+    scheduled_time: Optional[time] = None
+    special_instructions: Optional[str] = None
+
+class AdminUpdateBookingRequest(UpdateBookingRequest):
+    booking_status: Optional[Literal["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]] = None
+    estimated_price: Optional[Decimal] = None
+    final_price: Optional[Decimal] = None
+
+class CancelBookingRequest(BaseModel):
+    reason: Optional[str] = None
+
+class CreateCleanerProfileRequest(BaseModel):
+    user_id: str
+    vehicle_type: Optional[str] = None
+    government_id_number: Optional[str] = None
+    service_radius_km: Optional[Decimal] = None
+    approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = "pending"
+    availability_status: Optional[Literal["offline", "available", "busy"]] = "offline"
+
+class UpdateCleanerProfileRequest(BaseModel):
+    vehicle_type: Optional[str] = None
+    government_id_number: Optional[str] = None
+    service_radius_km: Optional[Decimal] = None
+    approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = None
+    availability_status: Optional[Literal["offline", "available", "busy"]] = None
+
+class UpdateCleanerAvailabilityRequest(BaseModel):
+    availability_status: Literal["offline", "available", "busy"]
+
+class AssignBookingRequest(BaseModel):
+    cleaner_id: str
+    cleaner_notes: Optional[str] = None
+
+class CleanerAssignmentActionRequest(BaseModel):
+    cleaner_notes: Optional[str] = None
+
+class CompleteAssignmentRequest(BaseModel):
+    cleaner_notes: Optional[str] = None
+    final_price: Optional[Decimal] = None
 
 class BookingResponse(BaseModel):
     id: str

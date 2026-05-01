@@ -2,8 +2,6 @@ from datetime import datetime, timedelta
 from core.security import (
     create_access_token,
     create_refresh_token,
-    hash_data,
-    verify_hash,
     decode_token
 )
 from repositories.token_repository import (
@@ -20,16 +18,12 @@ def refresh_user_token(db, refresh_token: str):
         raise Exception("Invalid refresh token")
 
     user_id = payload.get("sub")
-    stored_tokens = db.query(get_refresh_token.__globals__['RefreshToken']).all()
-
-    valid_token = None
-    for token in stored_tokens:
-        if verify_hash(refresh_token, token.token_hash):
-            valid_token = token
-            break
+    valid_token = get_refresh_token(db, refresh_token)
 
     if not valid_token:
         raise Exception("Refresh token revoked or invalid")
+    if str(valid_token.user_id) != str(user_id):
+        raise Exception("Refresh token does not belong to this user")
 
     revoke_token(db, valid_token.token_hash)
 
@@ -39,7 +33,7 @@ def refresh_user_token(db, refresh_token: str):
     save_refresh_token(
         db,
         user_id,
-        hash_data(new_refresh),
+        new_refresh,  # Store raw JWT - JWTs are self-verifying via signature
         datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
 
@@ -47,11 +41,9 @@ def refresh_user_token(db, refresh_token: str):
 
 
 def logout_user(db, refresh_token: str):
-    stored_tokens = db.query(get_refresh_token.__globals__['RefreshToken']).all()
-
-    for token in stored_tokens:
-        if verify_hash(refresh_token, token.token_hash):
-            revoke_token(db, token.token_hash)
-            return True
+    stored_token = get_refresh_token(db, refresh_token)
+    if stored_token:
+        revoke_token(db, stored_token.token_hash)
+        return True
 
     raise Exception("Invalid token")

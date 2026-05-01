@@ -4,13 +4,6 @@ from typing import Literal
 class SendOTPRequest(BaseModel):
     phone_number: str
 
-class SignupRequest(BaseModel):
-    full_name: str
-    phone_number: str = "+919876543210"
-    email: EmailStr
-    otp_code: str
-    role: str = "customer"
-
 class SigninRequest(BaseModel):
     phone_number: str
     otp_code: str
