@@ -8,6 +8,10 @@ def get_user_by_phone(db, phone):
     from models.user import User
     return db.query(User).filter(User.phone == phone).first()
 
+def get_user_by_email(db, email):
+    from models.user import User
+    return db.query(User).filter(User.email == email).first()
+
 def create_user(db, user_data):
     from models.user import User
     user = User(**user_data)

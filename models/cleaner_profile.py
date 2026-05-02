@@ -12,6 +12,8 @@ class CleanerProfile(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     vehicle_type = Column(String)
+    aadhaar_number = Column(String)
+    driving_license_number = Column(String)
     government_id_number = Column(String)
     service_radius_km = Column(Numeric(8, 2))
     approval_status = Column(String, default="pending")

@@ -151,7 +151,9 @@ def create_cleaner_profile_service(db, payload):
     if existing_profile:
         raise Exception("Cleaner profile already exists for this user")
 
-    return create_cleaner_profile(db, payload.model_dump(exclude_unset=True))
+    cleaner_data = payload.model_dump(exclude_unset=True)
+    cleaner_data.setdefault("government_id_number", cleaner_data.get("aadhaar_number"))
+    return create_cleaner_profile(db, cleaner_data)
 
 def get_or_create_cleaner_profile_service(db, user_id):
     profile = get_cleaner_profile_by_user_id(db, user_id)
@@ -386,6 +388,8 @@ def format_cleaner_profile(cleaner):
         "phone": cleaner.user.phone if cleaner.user else None,
         "email": cleaner.user.email if cleaner.user else None,
         "vehicle_type": cleaner.vehicle_type,
+        "aadhaar_number": cleaner.aadhaar_number,
+        "driving_license_number": cleaner.driving_license_number,
         "government_id_number": cleaner.government_id_number,
         "service_radius_km": float(cleaner.service_radius_km) if cleaner.service_radius_km is not None else None,
         "approval_status": cleaner.approval_status,

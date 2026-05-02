@@ -94,6 +94,8 @@ class CancelBookingRequest(BaseModel):
 class CreateCleanerProfileRequest(BaseModel):
     user_id: str
     vehicle_type: Optional[str] = None
+    aadhaar_number: str
+    driving_license_number: Optional[str] = None
     government_id_number: Optional[str] = None
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = "pending"
@@ -101,6 +103,8 @@ class CreateCleanerProfileRequest(BaseModel):
 
 class UpdateCleanerProfileRequest(BaseModel):
     vehicle_type: Optional[str] = None
+    aadhaar_number: Optional[str] = None
+    driving_license_number: Optional[str] = None
     government_id_number: Optional[str] = None
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = None
