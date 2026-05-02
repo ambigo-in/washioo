@@ -27,6 +27,7 @@ from routers.services_router import router as services_router
 from routers.user_router import router as user_router
 from routers.cleaner_router import router as cleaner_router
 from routers.customer_router import router as customer_router
+from routers.payment_router import router as payment_router
 
 openapi_tags = [
     {
@@ -57,6 +58,10 @@ openapi_tags = [
         "name": "Address APIs",
         "description": "Authenticated address management endpoints.",
     },
+    {
+        "name": "Payment APIs",
+        "description": "Admin-only payment management and manual update endpoints.",
+    },
 ]
 
 app = FastAPI(
@@ -85,6 +90,7 @@ app.include_router(services_router)
 app.include_router(user_router)
 app.include_router(cleaner_router)
 app.include_router(customer_router)
+app.include_router(payment_router)
 
 @app.get("/", tags=["Public APIs"])
 def root():
