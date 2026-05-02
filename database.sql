@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 
 CREATE INDEX idx_addresses_user ON addresses(user_id);
 CREATE INDEX idx_addresses_location ON addresses(latitude, longitude);
+CREATE UNIQUE INDEX idx_one_default_address_per_user ON addresses(user_id) WHERE is_default = TRUE;
 
 -- ============================================================
 -- 7. CLEANER PROFILES TABLE
@@ -130,11 +131,13 @@ CREATE TABLE IF NOT EXISTS cleaner_profiles (
     user_id UUID UNIQUE NOT NULL,
     vehicle_type VARCHAR(50), -- bike/car for transport
     aadhaar_number VARCHAR(20),
+    aadhaar_number_hash VARCHAR(64),
     driving_license_number VARCHAR(100),
+    driving_license_number_hash VARCHAR(64),
     government_id_number VARCHAR(100),
     service_radius_km NUMERIC(8,2),
-    approval_status VARCHAR(30) DEFAULT 'pending',
-    availability_status VARCHAR(30) DEFAULT 'offline',
+    approval_status VARCHAR(30) DEFAULT 'pending' CHECK (approval_status IN ('pending', 'approved', 'rejected', 'suspended')),
+    availability_status VARCHAR(30) DEFAULT 'offline' CHECK (availability_status IN ('offline', 'available', 'busy')),
     rating NUMERIC(3,2) DEFAULT 0,
     total_jobs_completed INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -143,6 +146,8 @@ CREATE TABLE IF NOT EXISTS cleaner_profiles (
 );
 
 CREATE INDEX idx_cleaner_status ON cleaner_profiles(approval_status, availability_status);
+CREATE UNIQUE INDEX idx_cleaner_aadhaar_hash ON cleaner_profiles(aadhaar_number_hash) WHERE aadhaar_number_hash IS NOT NULL;
+CREATE UNIQUE INDEX idx_cleaner_driving_license_hash ON cleaner_profiles(driving_license_number_hash) WHERE driving_license_number_hash IS NOT NULL;
 
 -- ============================================================
 -- 8. SERVICE CATEGORIES TABLE
@@ -175,7 +180,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     scheduled_date DATE,
     scheduled_time TIME,
     special_instructions TEXT,
-    booking_status VARCHAR(30) DEFAULT 'pending',
+    booking_status VARCHAR(30) DEFAULT 'pending' CHECK (booking_status IN ('pending', 'assigned', 'accepted', 'in_progress', 'completed', 'cancelled')),
     -- pending, assigned, accepted, in_progress, completed, cancelled
     estimated_price NUMERIC(10,2) NOT NULL,
     final_price NUMERIC(10,2),
@@ -202,7 +207,7 @@ CREATE TABLE IF NOT EXISTS booking_assignments (
     accepted_at TIMESTAMP,
     started_at TIMESTAMP,
     completed_at TIMESTAMP,
-    assignment_status VARCHAR(30) DEFAULT 'assigned',
+    assignment_status VARCHAR(30) DEFAULT 'assigned' CHECK (assignment_status IN ('assigned', 'accepted', 'in_progress', 'rejected', 'completed', 'cancelled')),
     -- assigned, accepted, rejected, completed
     cleaner_notes TEXT,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
@@ -224,7 +229,7 @@ CREATE TABLE IF NOT EXISTS payments (
     -- UPI / Cash
     transaction_reference VARCHAR(255),
     amount NUMERIC(10,2) NOT NULL,
-    payment_status VARCHAR(30) DEFAULT 'pending',
+    payment_status VARCHAR(30) DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
     -- pending, paid, failed
     collected_by_cleaner BOOLEAN DEFAULT FALSE,
     paid_at TIMESTAMP,

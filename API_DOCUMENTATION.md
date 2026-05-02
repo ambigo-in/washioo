@@ -10,6 +10,15 @@ Authorization: Bearer <access_token>
 
 Roles used by the API: `customer`, `cleaner`, `admin`.
 
+Flyway migrations live in `db/migration` and should run in order:
+
+```txt
+V1__init_schema.sql
+V2__create_initial_admin.sql
+V3__add_cleaner_identity_fields.sql
+V4__add_production_constraints.sql
+```
+
 ## Common Error Response
 
 ```json
@@ -35,18 +44,6 @@ Common status codes:
 ```json
 {
   "phone_number": "string"
-}
-```
-
-### SignupRequest
-
-```json
-{
-  "full_name": "string",
-  "phone_number": "string",
-  "email": "user@example.com",
-  "otp_code": "string",
-  "role": "customer | cleaner | admin"
 }
 ```
 
@@ -231,7 +228,6 @@ All fields are optional.
   "vehicle_type": "string",
   "aadhaar_number": "string",
   "driving_license_number": "string",
-  "government_id_number": "string",
   "service_radius_km": 0,
   "approval_status": "pending | approved | rejected | suspended",
   "availability_status": "offline | available | busy"
@@ -415,9 +411,10 @@ Returned when a customer creates a new booking.
   "phone": "string",
   "email": "user@example.com",
   "vehicle_type": "string",
-  "aadhaar_number": "string",
-  "driving_license_number": "string",
-  "government_id_number": "string",
+  "aadhaar_number_masked": "********9012",
+  "driving_license_number_masked": "******7890",
+  "has_aadhaar": true,
+  "has_driving_license": true,
   "service_radius_km": 0,
   "approval_status": "string",
   "availability_status": "string",
@@ -474,18 +471,19 @@ Returned when a customer creates a new booking.
 
 | Method | Endpoint | Request | Success Response | Authorization |
 | --- | --- | --- | --- | --- |
-| `POST` | `/auth/send-otp` | `SendOTPRequest` | `{ "message": "OTP sent successfully", "user_exist": true }` | Public |
-| `POST` | `/auth/signup` | `SignupRequest` | `TokenResponse` plus `is_new_user` | Public |
-| `POST` | `/auth/signin` | `SigninRequest` | `TokenResponse` | Public |
-| `POST` | `/auth/customer/send-otp` | `SendOTPRequest` | `{ "message": "Customer OTP sent successfully", "user_exist": true, "has_role": true }` | Public |
+| `POST` | `/auth/send-otp` | None | `410 Gone` | Deprecated; use role-specific OTP endpoints |
+| `POST` | `/auth/signup` | None | `410 Gone` | Deprecated; use role-specific signup endpoints |
+| `POST` | `/auth/signin` | None | `410 Gone` | Deprecated; use role-specific signin endpoints |
+| `POST` | `/auth/customer/send-otp` | `SendOTPRequest` | `{ "message": "Customer OTP sent successfully" }` | Public |
 | `POST` | `/auth/customer/signup` | `RoleSignupRequest` | `TokenResponse` plus `account_type` and `user` | Public |
 | `POST` | `/auth/customer/signin` | `SigninRequest` | `TokenResponse` plus `account_type` and `user` | Public |
-| `POST` | `/auth/cleaner/send-otp` | `SendOTPRequest` | `{ "message": "Cleaner OTP sent successfully", "user_exist": true, "has_role": true }` | Public |
+| `POST` | `/auth/cleaner/send-otp` | `SendOTPRequest` | `{ "message": "Cleaner OTP sent successfully" }` | Public |
 | `POST` | `/auth/cleaner/signup` | `CleanerSignupRequest` | `TokenResponse` plus `account_type`, `user`, and `cleaner` | Public |
 | `POST` | `/auth/cleaner/signin` | `SigninRequest` | `TokenResponse` plus `account_type`, `user`, and `cleaner` | Public |
-| `POST` | `/auth/admin/send-otp` | `SendOTPRequest` | `{ "message": "Admin OTP sent successfully", "user_exist": true, "has_role": true }` | Public, only existing admin phones |
+| `POST` | `/auth/admin/send-otp` | `SendOTPRequest` | `{ "message": "Admin OTP sent successfully" }` | Public, only existing admin phones receive OTP |
 | `POST` | `/auth/admin/signin` | `SigninRequest` | `TokenResponse` plus `account_type` and `user` | Public, only existing admin accounts |
 | `POST` | `/auth/admin/create` | `CreateAdminRequest` | `{ "message": "Admin account created successfully", "admin": User }` | Bearer token, role: `admin` |
+| `PATCH` | `/auth/admin/{admin_id}` | `UpdateUserRequest` | `{ "message": "Admin account updated successfully", "admin": User }` | Bearer token, role: `admin` |
 | `POST` | `/auth/refresh-token` | `RefreshTokenRequest` | `{ "access_token": "string", "refresh_token": "string", "token_type": "bearer" }` | Public |
 | `POST` | `/auth/logout` | `LogoutRequest` | `{ "message": "Logged out successfully" }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
 | `GET` | `/auth/me` | None | `{ "message": "User details fetched successfully", "user": User }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
@@ -493,7 +491,7 @@ Returned when a customer creates a new booking.
 | `GET` | `/auth/cleaner/jobs` | None | `{ "message": "Cleaner jobs fetched successfully", "assignments": [Assignment], "total": 0 }` | Bearer token, role: `cleaner` |
 | `GET` | `/auth/customer/bookings` | None | `{ "message": "Customer bookings fetched successfully", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `customer` |
 
-The generic `/auth/send-otp`, `/auth/signup`, and `/auth/signin` APIs are legacy-compatible. New frontend flows should use the role-specific APIs.
+The generic `/auth/send-otp`, `/auth/signup`, and `/auth/signin` APIs are disabled in production-facing flows.
 
 ## Admin Seed Migration
 
@@ -520,6 +518,8 @@ Cleaner signup stores required Aadhaar and optional driving license details on `
 ```txt
 db/migration/V3__add_cleaner_identity_fields.sql
 ```
+
+The API stores masked identity numbers plus deterministic hashes for uniqueness checks. Full Aadhaar and driving license values are not returned by normal API responses.
 
 ## User APIs
 

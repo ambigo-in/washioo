@@ -30,7 +30,7 @@ def get_cleaner_profile_by_user_id(db, user_id):
     )
 
 
-def get_all_cleaner_profiles(db, approval_status=None, availability_status=None):
+def get_all_cleaner_profiles(db, approval_status=None, availability_status=None, limit=50, offset=0):
     query = db.query(CleanerProfile).options(joinedload(CleanerProfile.user))
 
     if approval_status:
@@ -38,7 +38,7 @@ def get_all_cleaner_profiles(db, approval_status=None, availability_status=None)
     if availability_status:
         query = query.filter(CleanerProfile.availability_status == availability_status)
 
-    return query.order_by(CleanerProfile.created_at.desc()).all()
+    return query.order_by(CleanerProfile.created_at.desc()).offset(offset).limit(limit).all()
 
 
 def update_cleaner_profile(db, cleaner_id, cleaner_data):

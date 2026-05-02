@@ -3,6 +3,8 @@ from jose import jwt
 from passlib.context import CryptContext
 from core.config import settings
 from jose import JWTError
+import hashlib
+import hmac
 import uuid
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -12,6 +14,20 @@ def hash_data(data: str):
 
 def verify_hash(plain: str, hashed: str):
     return pwd_context.verify(plain, hashed)
+
+def hash_identifier(value: str):
+    normalized = "".join(value.split()).upper()
+    return hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        normalized.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+def mask_identifier(value: str, visible_digits: int = 4):
+    normalized = "".join(value.split()).upper()
+    if len(normalized) <= visible_digits:
+        return "*" * len(normalized)
+    return f"{'*' * (len(normalized) - visible_digits)}{normalized[-visible_digits:]}"
 
 def create_access_token(data: dict):
     to_encode = data.copy()

@@ -8,6 +8,13 @@ def get_role_by_name(db, role_name: str):
 
 
 def assign_role_to_user(db, user_id, role_id):
+    existing = db.query(UserRole).filter(
+        UserRole.user_id == user_id,
+        UserRole.role_id == role_id
+    ).first()
+    if existing:
+        return existing
+
     user_role = UserRole(
         user_id=user_id,
         role_id=role_id

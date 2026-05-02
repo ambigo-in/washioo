@@ -40,7 +40,7 @@ def get_assignment_by_booking_id(db, booking_id):
     )
 
 
-def get_cleaner_assignments(db, cleaner_id, status=None):
+def get_cleaner_assignments(db, cleaner_id, status=None, limit=50, offset=0):
     query = (
         db.query(BookingAssignment)
         .options(
@@ -55,10 +55,10 @@ def get_cleaner_assignments(db, cleaner_id, status=None):
     if status:
         query = query.filter(BookingAssignment.assignment_status == status)
 
-    return query.order_by(BookingAssignment.assigned_at.desc()).all()
+    return query.order_by(BookingAssignment.assigned_at.desc()).offset(offset).limit(limit).all()
 
 
-def get_all_assignments(db, status=None):
+def get_all_assignments(db, status=None, limit=50, offset=0):
     query = db.query(BookingAssignment).options(
         joinedload(BookingAssignment.booking).joinedload(Booking.service_category),
         joinedload(BookingAssignment.booking).joinedload(Booking.customer),
@@ -69,7 +69,7 @@ def get_all_assignments(db, status=None):
     if status:
         query = query.filter(BookingAssignment.assignment_status == status)
 
-    return query.order_by(BookingAssignment.assigned_at.desc()).all()
+    return query.order_by(BookingAssignment.assigned_at.desc()).offset(offset).limit(limit).all()
 
 
 def update_assignment(db, assignment_id, assignment_data):

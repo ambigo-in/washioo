@@ -15,6 +15,9 @@ class Booking(Base):
     scheduled_date = Column(Date)
     scheduled_time = Column(Time)
     special_instructions = Column(String)
+    vehicle_make = Column(String)
+    vehicle_model = Column(String)
+    license_plate = Column(String)
     booking_status = Column(String, default="pending")  # pending, assigned, accepted, in_progress, completed, cancelled
     estimated_price = Column(Numeric(10, 2), nullable=False)
     final_price = Column(Numeric(10, 2))
@@ -25,3 +28,6 @@ class Booking(Base):
     service_category = relationship("ServiceCategory", back_populates="bookings")
     address = relationship("Address")
     assignment = relationship("BookingAssignment", back_populates="booking", uselist=False, cascade="all, delete-orphan")
+    payment = relationship("Payment", back_populates="booking", uselist=False, cascade="all, delete-orphan")
+
+

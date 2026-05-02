@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date, time
 from typing import Literal, Optional
 from decimal import Decimal
@@ -17,6 +17,11 @@ class AddressSchema(BaseModel):
     longitude: Optional[float] = None
     is_default: Optional[bool] = False
 
+def _normalize_coordinate(value: Optional[float]) -> Optional[float]:
+    if value is None:
+        return None
+    return round(float(value), 6)
+
 class CreateAddressRequest(BaseModel):
     address_label: Optional[str] = None
     address_line1: str
@@ -26,9 +31,15 @@ class CreateAddressRequest(BaseModel):
     state: Optional[str] = None
     pincode: Optional[str] = None
     country: Optional[str] = "India"
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    latitude: float
+    longitude: float
+    location_verified: Optional[bool] = True
     is_default: Optional[bool] = False
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def normalize_coordinate(cls, value: float) -> float:
+        return round(float(value), 6)
 
 class UpdateAddressRequest(BaseModel):
     address_label: Optional[str] = None
@@ -41,20 +52,32 @@ class UpdateAddressRequest(BaseModel):
     country: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    location_verified: Optional[bool] = None
     is_default: Optional[bool] = None
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def normalize_coordinate(cls, value: Optional[float]) -> Optional[float]:
+        return _normalize_coordinate(value)
+
+    @model_validator(mode="after")
+    def coordinates_must_be_paired(self):
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("Both latitude and longitude are required together")
+        return self
 
 class CreateServiceRequest(BaseModel):
     service_name: str
     description: Optional[str] = None
-    base_price: Decimal
-    estimated_duration_minutes: Optional[int] = None
+    base_price: Decimal = Field(..., gt=0)
+    estimated_duration_minutes: Optional[int] = Field(default=None, gt=0)
     is_active: Optional[bool] = True
 
 class UpdateServiceRequest(BaseModel):
     service_name: Optional[str] = None
     description: Optional[str] = None
-    base_price: Optional[Decimal] = None
-    estimated_duration_minutes: Optional[int] = None
+    base_price: Optional[Decimal] = Field(default=None, gt=0)
+    estimated_duration_minutes: Optional[int] = Field(default=None, gt=0)
     is_active: Optional[bool] = None
 
 class ServiceCategorySchema(BaseModel):
@@ -85,8 +108,8 @@ class UpdateBookingRequest(BaseModel):
 
 class AdminUpdateBookingRequest(UpdateBookingRequest):
     booking_status: Optional[Literal["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]] = None
-    estimated_price: Optional[Decimal] = None
-    final_price: Optional[Decimal] = None
+    estimated_price: Optional[Decimal] = Field(default=None, gt=0)
+    final_price: Optional[Decimal] = Field(default=None, gt=0)
 
 class CancelBookingRequest(BaseModel):
     reason: Optional[str] = None
@@ -94,18 +117,16 @@ class CancelBookingRequest(BaseModel):
 class CreateCleanerProfileRequest(BaseModel):
     user_id: str
     vehicle_type: Optional[str] = None
-    aadhaar_number: str
-    driving_license_number: Optional[str] = None
-    government_id_number: Optional[str] = None
+    aadhaar_number: str = Field(..., pattern=r"^\d{12}$")
+    driving_license_number: Optional[str] = Field(default=None, min_length=6, max_length=30)
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = "pending"
     availability_status: Optional[Literal["offline", "available", "busy"]] = "offline"
 
 class UpdateCleanerProfileRequest(BaseModel):
     vehicle_type: Optional[str] = None
-    aadhaar_number: Optional[str] = None
-    driving_license_number: Optional[str] = None
-    government_id_number: Optional[str] = None
+    aadhaar_number: Optional[str] = Field(default=None, pattern=r"^\d{12}$")
+    driving_license_number: Optional[str] = Field(default=None, min_length=6, max_length=30)
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = None
     availability_status: Optional[Literal["offline", "available", "busy"]] = None
@@ -122,7 +143,7 @@ class CleanerAssignmentActionRequest(BaseModel):
 
 class CompleteAssignmentRequest(BaseModel):
     cleaner_notes: Optional[str] = None
-    final_price: Optional[Decimal] = None
+    final_price: Optional[Decimal] = Field(default=None, gt=0)
 
 class BookingResponse(BaseModel):
     id: str
@@ -158,3 +179,5 @@ class AdminBookingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+

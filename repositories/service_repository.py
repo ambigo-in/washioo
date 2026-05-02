@@ -1,8 +1,15 @@
 from models.service_category import ServiceCategory
 
-def get_all_services(db):
+def get_all_services(db, limit=50, offset=0):
     """Get all active services"""
-    return db.query(ServiceCategory).filter(ServiceCategory.is_active == True).all()
+    return (
+        db.query(ServiceCategory)
+        .filter(ServiceCategory.is_active == True)
+        .order_by(ServiceCategory.service_name.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 def get_service_by_id(db, service_id):
     """Get service by ID"""

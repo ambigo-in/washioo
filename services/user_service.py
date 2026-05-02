@@ -30,8 +30,8 @@ def get_user_details_service(db, user_id):
     return get_user_profile(user)
 
 
-def get_all_users_service(db):
-    users = get_all_users(db)
+def get_all_users_service(db, limit=50, offset=0):
+    users = get_all_users(db, limit, offset)
     return [get_user_profile(user) for user in users]
 
 
@@ -43,6 +43,7 @@ def update_user_details_service(db, user_id, payload):
     try:
         updated_user = update_user_details(db, user, payload)
     except IntegrityError:
+        db.rollback()
         raise Exception("Phone or email already in use")
 
     return get_user_profile(updated_user)
@@ -56,10 +57,10 @@ def delete_user_service(db, user_id):
     return True
 
 
-def get_users_by_role_service(db, role_name):
+def get_users_by_role_service(db, role_name, limit=50, offset=0):
     if not get_role_by_name(db, role_name):
         raise Exception("Role not found")
 
-    users = get_users_by_role(db, role_name)
+    users = get_users_by_role(db, role_name, limit, offset)
     return [get_user_profile(user) for user in users]
 

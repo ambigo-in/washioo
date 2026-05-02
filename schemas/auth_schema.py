@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Literal
 
 class SendOTPRequest(BaseModel):
     phone_number: str
@@ -21,15 +20,8 @@ class RoleSignupRequest(BaseModel):
     otp_code: str
 
 class CleanerSignupRequest(RoleSignupRequest):
-    aadhaar_number: str = Field(..., min_length=12, max_length=20)
-    driving_license_number: str | None = None
-
-class SignupRequest(BaseModel):
-    full_name: str
-    phone_number: str
-    email: EmailStr
-    otp_code: str
-    role: Literal["customer", "cleaner", "admin"]
+    aadhaar_number: str = Field(..., pattern=r"^\d{12}$")
+    driving_license_number: str | None = Field(default=None, min_length=6, max_length=30)
 
 class CreateAdminRequest(BaseModel):
     full_name: str

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from core.database import get_db
 from core.role_dependencies import admin_only, all_authenticated_users
@@ -43,13 +43,15 @@ def update_my_profile(
 def list_users_by_role(
     db: Session = Depends(get_db),
     role: str | None = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_admin=Depends(admin_only)
 ):
     try:
         if role:
-            users = get_users_by_role_service(db, role)
+            users = get_users_by_role_service(db, role, limit, offset)
         else:
-            users = get_all_users_service(db)
+            users = get_all_users_service(db, limit, offset)
         return {
             "message": "Users fetched successfully",
             "users": users,

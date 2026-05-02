@@ -16,9 +16,11 @@ from repositories.cleaner_repository import (
     user_has_cleaner_role
 )
 from repositories.user_repository import get_user_with_roles
+from repositories.address_repository import get_user_default_address
+from core.security import hash_identifier, mask_identifier
 
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
-ASSIGNMENT_STATUSES = ["assigned", "accepted", "rejected", "completed"]
+ASSIGNMENT_STATUSES = ["assigned", "accepted", "in_progress", "rejected", "completed", "cancelled"]
 
 def generate_booking_reference():
     """Generate unique booking reference"""
@@ -41,7 +43,10 @@ def create_new_booking(db, customer_id, payload):
         address = create_address(db, address_data)
         address_id = str(address.id)
     elif not address_id:
-        raise Exception("Please provide an address or address_id")
+        default_address = get_user_default_address(db, customer_id)
+        if not default_address:
+            raise Exception("Please provide an address or address_id")
+        address_id = str(default_address.id)
     
     # Verify address exists and belongs to customer
     address = get_address_by_id(db, address_id)
@@ -64,13 +69,13 @@ def create_new_booking(db, customer_id, payload):
     booking = create_booking(db, booking_data)
     return booking
 
-def get_customer_bookings_service(db, customer_id):
+def get_customer_bookings_service(db, customer_id, limit=50, offset=0):
     """Get all bookings for a customer"""
-    return get_customer_bookings(db, customer_id)
+    return get_customer_bookings(db, customer_id, limit, offset)
 
-def get_all_bookings_service(db):
+def get_all_bookings_service(db, limit=50, offset=0):
     """Get all bookings (admin view)"""
-    return get_all_bookings(db)
+    return get_all_bookings(db, limit, offset)
 
 def get_customer_booking_service(db, customer_id, booking_id):
     booking = get_customer_booking_by_id(db, customer_id, booking_id)
@@ -83,6 +88,16 @@ def get_admin_booking_service(db, booking_id):
     if not booking:
         raise Exception("Booking not found")
     return booking
+
+def get_cleaner_booking_service(db, user_id, booking_id):
+    cleaner = get_or_create_cleaner_profile_service(db, user_id)
+    booking = get_booking_by_id(db, booking_id)
+    if not booking:
+        raise Exception("Booking not found")
+    if not booking.assignment or booking.assignment.cleaner_id != cleaner.id:
+        raise Exception("Booking not found")
+    return booking
+
 
 def update_customer_booking_service(db, customer_id, booking_id, payload):
     """Allow customer to edit their booking before it is assigned."""
@@ -111,10 +126,8 @@ def cancel_customer_booking_service(db, customer_id, booking_id):
     booking = get_customer_booking_by_id(db, customer_id, booking_id)
     if not booking:
         raise Exception("Booking not found")
-    if booking.booking_status in ["completed", "cancelled"]:
-        raise Exception("Booking cannot be cancelled")
-    if booking.booking_status == "in_progress":
-        raise Exception("Booking is already in progress")
+    if booking.booking_status != "pending":
+        raise Exception("Only pending bookings can be cancelled by customer")
 
     return update_booking(db, booking_id, {"booking_status": "cancelled"})
 
@@ -125,8 +138,8 @@ def update_admin_booking_service(db, booking_id, payload):
 
     booking_data = payload.model_dump(exclude_unset=True)
 
-    if "booking_status" in booking_data and booking_data["booking_status"] not in BOOKING_STATUSES:
-        raise Exception("Invalid booking status")
+    if "booking_status" in booking_data:
+        raise Exception("Use explicit lifecycle endpoints to change booking status")
 
     if "service_category_id" in booking_data:
         service = get_service_by_id(db, booking_data["service_category_id"])
@@ -151,20 +164,17 @@ def create_cleaner_profile_service(db, payload):
     if existing_profile:
         raise Exception("Cleaner profile already exists for this user")
 
-    cleaner_data = payload.model_dump(exclude_unset=True)
-    cleaner_data.setdefault("government_id_number", cleaner_data.get("aadhaar_number"))
+    cleaner_data = _cleaner_identity_data(payload.model_dump(exclude_unset=True))
     return create_cleaner_profile(db, cleaner_data)
 
 def get_or_create_cleaner_profile_service(db, user_id):
     profile = get_cleaner_profile_by_user_id(db, user_id)
     if profile:
         return profile
-    if not user_has_cleaner_role(db, user_id):
-        raise Exception("User does not have cleaner role")
-    return create_cleaner_profile(db, {"user_id": user_id})
+    raise Exception("Cleaner profile not found")
 
-def list_cleaner_profiles_service(db, approval_status=None, availability_status=None):
-    return get_all_cleaner_profiles(db, approval_status, availability_status)
+def list_cleaner_profiles_service(db, approval_status=None, availability_status=None, limit=50, offset=0):
+    return get_all_cleaner_profiles(db, approval_status, availability_status, limit, offset)
 
 def get_cleaner_profile_service(db, cleaner_id):
     cleaner = get_cleaner_profile_by_id(db, cleaner_id)
@@ -177,7 +187,7 @@ def update_cleaner_profile_service(db, cleaner_id, payload):
     if not cleaner:
         raise Exception("Cleaner profile not found")
 
-    cleaner_data = payload.model_dump(exclude_unset=True)
+    cleaner_data = _cleaner_identity_data(payload.model_dump(exclude_unset=True), partial=True)
     return update_cleaner_profile(db, cleaner_id, cleaner_data)
 
 def delete_cleaner_profile_service(db, cleaner_id):
@@ -200,7 +210,7 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
     booking = get_booking_by_id(db, booking_id)
     if not booking:
         raise Exception("Booking not found")
-    if booking.booking_status in ["completed", "cancelled", "in_progress"]:
+    if booking.booking_status not in ["pending", "assigned"]:
         raise Exception("Booking cannot be assigned in its current status")
 
     cleaner = get_cleaner_profile_by_id(db, payload.cleaner_id)
@@ -224,6 +234,8 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
     }
 
     if existing_assignment:
+        if existing_assignment.assignment_status in ["accepted", "in_progress", "completed"]:
+            raise Exception("Active or completed assignments cannot be reassigned")
         assignment = update_assignment(db, existing_assignment.id, assignment_data)
     else:
         assignment_data["booking_id"] = booking_id
@@ -232,16 +244,16 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
     update_booking(db, booking_id, {"booking_status": "assigned"})
     return get_assignment_by_id(db, assignment.id)
 
-def list_cleaner_assignments_service(db, user_id, status=None):
+def list_cleaner_assignments_service(db, user_id, status=None, limit=50, offset=0):
     cleaner = get_or_create_cleaner_profile_service(db, user_id)
     if status and status not in ASSIGNMENT_STATUSES:
         raise Exception("Invalid assignment status")
-    return get_cleaner_assignments(db, cleaner.id, status)
+    return get_cleaner_assignments(db, cleaner.id, status, limit, offset)
 
-def list_all_assignments_service(db, status=None):
+def list_all_assignments_service(db, status=None, limit=50, offset=0):
     if status and status not in ASSIGNMENT_STATUSES:
         raise Exception("Invalid assignment status")
-    return get_all_assignments(db, status)
+    return get_all_assignments(db, status, limit, offset)
 
 def get_cleaner_assignment_service(db, user_id, assignment_id):
     cleaner = get_or_create_cleaner_profile_service(db, user_id)
@@ -289,6 +301,7 @@ def start_assignment_service(db, user_id, assignment_id, payload):
         raise Exception("Booking is not ready to start")
 
     assignment = update_assignment(db, assignment_id, {
+        "assignment_status": "in_progress",
         "started_at": datetime.utcnow(),
         "cleaner_notes": payload.cleaner_notes
     })
@@ -299,7 +312,7 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
     assignment = get_cleaner_assignment_service(db, user_id, assignment_id)
     if not assignment.started_at:
         raise Exception("Assignment must be started before completion")
-    if assignment.assignment_status != "accepted":
+    if assignment.assignment_status != "in_progress":
         raise Exception("Assignment cannot be completed")
     if assignment.booking and assignment.booking.booking_status != "in_progress":
         raise Exception("Booking is not in progress")
@@ -330,6 +343,7 @@ def format_admin_booking(booking):
         "customer_id": str(booking.customer_id),
         "customer_name": booking.customer.full_name if booking.customer else None,
         "customer_phone": booking.customer.phone if booking.customer else None,
+        "customer_email": booking.customer.email if booking.customer else None,
         "service_name": booking.service_category.service_name if booking.service_category else None,
         "service_category_id": str(booking.service_category_id),
         "scheduled_date": str(booking.scheduled_date),
@@ -340,8 +354,35 @@ def format_admin_booking(booking):
         "special_instructions": booking.special_instructions,
         "address": format_address(booking.address),
         "assignment": format_assignment_summary(booking.assignment),
+        "vehicle_details": format_vehicle_details(booking),
+        "payment": format_payment_summary(booking),
         "created_at": booking.created_at.isoformat()
     }
+
+def format_cleaner_booking_detail(booking):
+    return format_admin_booking(booking)
+
+def format_vehicle_details(booking):
+    return {
+        "make": getattr(booking, "vehicle_make", None),
+        "model": getattr(booking, "vehicle_model", None),
+        "license_plate": getattr(booking, "license_plate", None),
+    }
+
+def format_payment_summary(booking):
+    payment = getattr(booking, "payment", None)
+    if payment:
+        return {
+            "payment_status": payment.payment_status,
+            "amount": float(payment.amount) if payment.amount is not None else 0,
+        }
+
+    amount = booking.final_price if booking.final_price is not None else booking.estimated_price
+    return {
+        "payment_status": "pending",
+        "amount": float(amount) if amount is not None else 0,
+    }
+
 
 def format_customer_booking(booking):
     """Format booking for customer response"""
@@ -357,6 +398,8 @@ def format_customer_booking(booking):
         "special_instructions": booking.special_instructions,
         "address": format_address(booking.address),
         "assignment": format_assignment_summary(booking.assignment),
+        "vehicle_details": format_vehicle_details(booking),
+        "payment": format_payment_summary(booking),
         "created_at": booking.created_at.isoformat()
     }
 
@@ -375,6 +418,7 @@ def format_address(address):
         "country": address.country,
         "latitude": float(address.latitude) if address.latitude is not None else None,
         "longitude": float(address.longitude) if address.longitude is not None else None,
+        "location_verified": bool(getattr(address, "location_verified", False)),
         "is_default": address.is_default,
     }
 
@@ -388,9 +432,10 @@ def format_cleaner_profile(cleaner):
         "phone": cleaner.user.phone if cleaner.user else None,
         "email": cleaner.user.email if cleaner.user else None,
         "vehicle_type": cleaner.vehicle_type,
-        "aadhaar_number": cleaner.aadhaar_number,
-        "driving_license_number": cleaner.driving_license_number,
-        "government_id_number": cleaner.government_id_number,
+        "aadhaar_number_masked": cleaner.aadhaar_number,
+        "driving_license_number_masked": cleaner.driving_license_number,
+        "has_aadhaar": bool(cleaner.aadhaar_number_hash or cleaner.aadhaar_number),
+        "has_driving_license": bool(cleaner.driving_license_number_hash or cleaner.driving_license_number),
         "service_radius_km": float(cleaner.service_radius_km) if cleaner.service_radius_km is not None else None,
         "approval_status": cleaner.approval_status,
         "availability_status": cleaner.availability_status,
@@ -398,6 +443,21 @@ def format_cleaner_profile(cleaner):
         "total_jobs_completed": cleaner.total_jobs_completed or 0,
         "created_at": cleaner.created_at.isoformat() if cleaner.created_at else None,
     }
+
+
+def _cleaner_identity_data(cleaner_data, partial=False):
+    if "aadhaar_number" in cleaner_data:
+        cleaner_data["aadhaar_number_hash"] = hash_identifier(cleaner_data["aadhaar_number"])
+        cleaner_data["aadhaar_number"] = mask_identifier(cleaner_data["aadhaar_number"])
+        cleaner_data["government_id_number"] = cleaner_data["aadhaar_number"]
+    elif not partial:
+        raise Exception("Aadhaar number is required")
+
+    if cleaner_data.get("driving_license_number"):
+        cleaner_data["driving_license_number_hash"] = hash_identifier(cleaner_data["driving_license_number"])
+        cleaner_data["driving_license_number"] = mask_identifier(cleaner_data["driving_license_number"])
+
+    return cleaner_data
 
 def format_assignment_summary(assignment):
     if not assignment:
@@ -424,3 +484,6 @@ def format_assignment(assignment):
         "cleaner": format_cleaner_profile(assignment.cleaner),
         "booking": format_admin_booking(booking) if booking else None,
     }
+
+
+

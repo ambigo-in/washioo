@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from schemas.booking_schema import (
     AdminUpdateBookingRequest,
@@ -29,7 +29,7 @@ from services.booking_service import (
     get_or_create_cleaner_profile_service,
     list_cleaner_profiles_service, get_cleaner_profile_service,
     update_cleaner_profile_service, delete_cleaner_profile_service,
-    update_current_cleaner_availability_service, assign_booking_to_cleaner_service,
+    update_current_cleaner_availability_service, assign_booking_to_cleaner_service, format_address,
     list_cleaner_assignments_service, list_all_assignments_service,
     get_cleaner_assignment_service, accept_assignment_service,
     reject_assignment_service, start_assignment_service,
@@ -51,10 +51,14 @@ router = APIRouter(prefix="/services")
 # ============================================================
 
 @router.get("/", tags=[PUBLIC_TAG])
-def get_services(db: Session = Depends(get_db)):
+def get_services(
+    db: Session = Depends(get_db),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
     """Get all available services"""
     try:
-        services = get_all_services(db)
+        services = get_all_services(db, limit, offset)
         service_list = [
             {
                 "id": str(service.id),
@@ -95,7 +99,7 @@ def get_service_category(service_id: str, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/admin/service-categories", tags=[ADMIN_TAG])
+@router.post("/admin/service-categories", tags=[ADMIN_TAG], status_code=status.HTTP_201_CREATED)
 def create_service_category_admin(
     payload: CreateServiceRequest,
     db: Session = Depends(get_db),
@@ -165,7 +169,7 @@ def delete_service_category_admin(
 # ADDRESS ENDPOINTS
 # ============================================================
 
-@router.post("/address", tags=[ADDRESS_TAG, CUSTOMER_TAG])
+@router.post("/address", tags=[ADDRESS_TAG, CUSTOMER_TAG], status_code=status.HTTP_201_CREATED)
 def create_user_address(
     payload: CreateAddressRequest,
     db: Session = Depends(get_db),
@@ -175,23 +179,13 @@ def create_user_address(
     try:
         address_data = payload.model_dump()
         address_data["user_id"] = current_user.id
-        
+        address_data["location_verified"] = True
+
         address = create_address(db, address_data)
-        
+
         return {
             "message": "Address created successfully",
-            "address": {
-                "id": str(address.id),
-                "address_label": address.address_label,
-                "address_line1": address.address_line1,
-                "address_line2": address.address_line2,
-                "landmark": address.landmark,
-                "city": address.city,
-                "state": address.state,
-                "pincode": address.pincode,
-                "country": address.country,
-                "is_default": address.is_default
-            }
+            "address": format_address(address)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -205,23 +199,8 @@ def get_user_addresses_api(
     """Get all addresses for current user"""
     try:
         addresses = get_user_addresses(db, current_user.id)
-        
-        address_list = [
-            {
-                "id": str(addr.id),
-                "address_label": addr.address_label,
-                "address_line1": addr.address_line1,
-                "address_line2": addr.address_line2,
-                "landmark": addr.landmark,
-                "city": addr.city,
-                "state": addr.state,
-                "pincode": addr.pincode,
-                "country": addr.country,
-                "is_default": addr.is_default
-            }
-            for addr in addresses
-        ]
-        
+        address_list = [format_address(addr) for addr in addresses]
+
         return {
             "message": "Addresses fetched successfully",
             "addresses": address_list,
@@ -243,21 +222,17 @@ def update_user_address(
     if not address or address.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Address not found")
 
-    updated = update_address(db, address_id, payload.model_dump(exclude_unset=True))
+    update_data = payload.model_dump(exclude_unset=True)
+    next_latitude = update_data.get("latitude", address.latitude)
+    next_longitude = update_data.get("longitude", address.longitude)
+    if next_latitude is None or next_longitude is None:
+        raise HTTPException(status_code=400, detail="Latitude and longitude are required")
+    update_data["location_verified"] = True
+
+    updated = update_address(db, address_id, update_data)
     return {
         "message": "Address updated successfully",
-        "address": {
-            "id": str(updated.id),
-            "address_label": updated.address_label,
-            "address_line1": updated.address_line1,
-            "address_line2": updated.address_line2,
-            "landmark": updated.landmark,
-            "city": updated.city,
-            "state": updated.state,
-            "pincode": updated.pincode,
-            "country": updated.country,
-            "is_default": updated.is_default
-        }
+        "address": format_address(updated)
     }
 
 
@@ -283,7 +258,7 @@ def delete_user_address(
 # BOOKING ENDPOINTS - CUSTOMER
 # ============================================================
 
-@router.post("/book", tags=[CUSTOMER_TAG])
+@router.post("/book", tags=[CUSTOMER_TAG], status_code=status.HTTP_201_CREATED)
 def book_service(
     payload: CreateBookingRequest,
     db: Session = Depends(get_db),
@@ -313,11 +288,13 @@ def book_service(
 @router.get("/my-bookings", tags=[CUSTOMER_TAG])
 def get_my_bookings(
     db: Session = Depends(get_db),
-    current_user=Depends(require_roles(["customer"]))
+    current_user=Depends(require_roles(["customer"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Get customer's own bookings"""
     try:
-        bookings = get_customer_bookings_service(db, current_user.id)
+        bookings = get_customer_bookings_service(db, current_user.id, limit, offset)
         
         bookings_list = [format_customer_booking(booking) for booking in bookings]
         
@@ -390,11 +367,13 @@ def cancel_my_booking(
 @router.get("/admin/all-bookings", tags=[ADMIN_TAG])
 def get_all_bookings_admin(
     db: Session = Depends(get_db),
-    current_admin=Depends(require_roles(["admin"]))
+    current_admin=Depends(require_roles(["admin"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Admin view all bookings"""
     try:
-        bookings = get_all_bookings_service(db)
+        bookings = get_all_bookings_service(db, limit, offset)
         
         bookings_list = [format_admin_booking(booking) for booking in bookings]
         
@@ -446,11 +425,13 @@ def update_booking_admin(
 def get_customer_bookings_admin(
     customer_id: str,
     db: Session = Depends(get_db),
-    current_admin=Depends(require_roles(["admin"]))
+    current_admin=Depends(require_roles(["admin"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Admin view bookings for a particular customer"""
     try:
-        bookings = get_customer_bookings_service(db, customer_id)
+        bookings = get_customer_bookings_service(db, customer_id, limit, offset)
         bookings_list = [format_customer_booking(booking) for booking in bookings]
         return {
             "message": "Customer bookings fetched successfully",
@@ -484,7 +465,9 @@ def assign_booking_admin(
 def get_bookings_by_status_admin(
     status: str,
     db: Session = Depends(get_db),
-    current_admin=Depends(require_roles(["admin"]))
+    current_admin=Depends(require_roles(["admin"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Admin view bookings filtered by status"""
     valid_statuses = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
@@ -497,7 +480,7 @@ def get_bookings_by_status_admin(
     
     try:
         from repositories.booking_repository import get_bookings_by_status
-        bookings = get_bookings_by_status(db, status)
+        bookings = get_bookings_by_status(db, status, limit, offset)
         
         bookings_list = [format_admin_booking(booking) for booking in bookings]
         
@@ -515,7 +498,7 @@ def get_bookings_by_status_admin(
 # CLEANER PROFILE ENDPOINTS
 # ============================================================
 
-@router.post("/admin/cleaners", tags=[ADMIN_TAG])
+@router.post("/admin/cleaners", tags=[ADMIN_TAG], status_code=status.HTTP_201_CREATED)
 def create_cleaner_profile_admin(
     payload: CreateCleanerProfileRequest,
     db: Session = Depends(get_db),
@@ -537,11 +520,13 @@ def list_cleaners_admin(
     approval_status: str | None = None,
     availability_status: str | None = None,
     db: Session = Depends(get_db),
-    current_admin=Depends(require_roles(["admin"]))
+    current_admin=Depends(require_roles(["admin"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Admin list cleaner profiles"""
     try:
-        cleaners = list_cleaner_profiles_service(db, approval_status, availability_status)
+        cleaners = list_cleaner_profiles_service(db, approval_status, availability_status, limit, offset)
         cleaner_list = [format_cleaner_profile(cleaner) for cleaner in cleaners]
         return {
             "message": "Cleaners fetched successfully",
@@ -645,11 +630,13 @@ def update_current_cleaner_availability(
 def list_assignments_admin(
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_admin=Depends(require_roles(["admin"]))
+    current_admin=Depends(require_roles(["admin"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Admin list all assignments"""
     try:
-        assignments = list_all_assignments_service(db, status)
+        assignments = list_all_assignments_service(db, status, limit, offset)
         assignment_list = [format_assignment(assignment) for assignment in assignments]
         return {
             "message": "Assignments fetched successfully",
@@ -664,11 +651,13 @@ def list_assignments_admin(
 def list_cleaner_assignments(
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_cleaner=Depends(require_roles(["cleaner"]))
+    current_cleaner=Depends(require_roles(["cleaner"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
     """Cleaner fetch assigned bookings/services"""
     try:
-        assignments = list_cleaner_assignments_service(db, current_cleaner.id, status)
+        assignments = list_cleaner_assignments_service(db, current_cleaner.id, status, limit, offset)
         assignment_list = [format_assignment(assignment) for assignment in assignments]
         return {
             "message": "Cleaner assignments fetched successfully",
@@ -766,3 +755,5 @@ def complete_assignment(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+

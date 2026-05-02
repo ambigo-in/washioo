@@ -6,6 +6,7 @@ from repositories.role_repository import get_role_by_name, assign_role_to_user, 
 from repositories.cleaner_repository import create_cleaner_profile, get_cleaner_profile_by_user_id
 from utils.twilio_helper import verify_otp
 from core.config import settings
+from core.security import hash_identifier, mask_identifier
 
 def _get_role_or_raise(db, role_name: str):
     role = get_role_by_name(db, role_name)
@@ -44,11 +45,13 @@ def _cleaner_profile_data_from_signup(payload):
         raise Exception("Aadhaar number is required for cleaner signup")
 
     data = {
-        "aadhaar_number": payload.aadhaar_number,
-        "government_id_number": payload.aadhaar_number,
+        "aadhaar_number": mask_identifier(payload.aadhaar_number),
+        "aadhaar_number_hash": hash_identifier(payload.aadhaar_number),
+        "government_id_number": mask_identifier(payload.aadhaar_number),
     }
     if payload.driving_license_number is not None:
-        data["driving_license_number"] = payload.driving_license_number
+        data["driving_license_number"] = mask_identifier(payload.driving_license_number)
+        data["driving_license_number_hash"] = hash_identifier(payload.driving_license_number)
     return data
 
 
@@ -97,9 +100,6 @@ def signup_user_for_role(db, payload, role_name: str, cleaner_profile_data: dict
     return _create_tokens(db, user, role.role_name)
 
 
-def signup_user(db, payload):
-    return signup_user_for_role(db, payload, payload.role)
-
 def signin_user_for_role(db, payload, role_name: str):
     user = get_user_by_phone(db, payload.phone_number)
     if not user:
@@ -114,20 +114,6 @@ def signin_user_for_role(db, payload, role_name: str):
         raise Exception("Invalid OTP")
 
     return _create_tokens(db, user, role_name)
-
-
-def signin_user(db, payload):
-    user = get_user_by_phone(db, payload.phone_number)
-    if not user:
-        raise Exception("User not found")
-    if not user.is_active:
-        raise Exception("User account is inactive")
-
-    verification = verify_otp(payload.phone_number, payload.otp_code)
-    if verification.status != "approved":
-        raise Exception("Invalid OTP")
-
-    return _create_tokens(db, user)
 
 
 def create_admin_user(db, payload):

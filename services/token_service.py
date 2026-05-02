@@ -9,6 +9,7 @@ from repositories.token_repository import (
     save_refresh_token,
     revoke_token
 )
+from repositories.user_repository import get_user_with_roles
 from core.config import settings
 
 
@@ -29,6 +30,10 @@ def refresh_user_token(db, refresh_token: str):
     
     if str(valid_token.user_id) != str(user_id):
         raise Exception("Refresh token does not belong to this user")
+
+    user = get_user_with_roles(db, user_id)
+    if not user or not user.is_active:
+        raise Exception("User not found or inactive")
 
     # Revoke old token
     revoke_token(db, valid_token.jti)

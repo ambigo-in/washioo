@@ -1,6 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
-from schemas.auth_schema import *
+from schemas.auth_schema import (
+    CleanerSignupRequest,
+    CreateAdminRequest,
+    LogoutRequest,
+    RefreshTokenRequest,
+    RoleSignupRequest,
+    SendOTPRequest,
+    SigninRequest,
+)
+from schemas.user_schema import UpdateUserRequest
 from core.config import settings
 from core.database import get_db
 from core.rate_limiter import limiter
@@ -9,14 +18,13 @@ from repositories.role_repository import user_has_role
 from repositories.cleaner_repository import get_cleaner_profile_by_user_id
 from services.auth_service import (
     create_admin_user,
-    signup_user,
-    signin_user,
     signup_user_for_role,
     signin_user_for_role,
 )
 from services.token_service import refresh_user_token, logout_user
 from core.dependencies import get_current_user
 from services.user_service import get_user_profile
+from services.user_service import update_user_details_service
 from services.booking_service import (
     get_customer_bookings_service,
     list_cleaner_assignments_service,
@@ -55,24 +63,19 @@ def _token_response(message: str, access: str, refresh: str, account_type: str |
 
 
 def _send_role_otp(db: Session, phone_number: str, role_name: str):
-    user = get_user_by_phone(db, phone_number)
     send_otp(phone_number)
     return {
         "message": f"{role_name.title()} OTP sent successfully",
-        "user_exist": bool(user),
-        "has_role": bool(user and user_has_role(db, user.id, role_name))
     }
 
 
 @router.post("/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
-def send_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
-    user = get_user_by_phone(db, payload.phone_number)
-    send_otp(payload.phone_number)
-    return {
-        "message": "OTP sent successfully",
-        "user_exist": bool(user)
-    }
+def send_otp_api(request: Request):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Use role-specific OTP endpoints"
+    )
 
 @router.post("/customer/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
@@ -151,12 +154,12 @@ def cleaner_signin(request: Request, payload: SigninRequest, db: Session = Depen
 def send_admin_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
     user = get_user_by_phone(db, payload.phone_number)
     if not user or not user_has_role(db, user.id, "admin"):
-        raise HTTPException(status_code=404, detail="Admin account not found")
+        return {
+            "message": "If an admin account exists for this phone, an OTP has been sent"
+        }
     send_otp(payload.phone_number)
     return {
         "message": "Admin OTP sent successfully",
-        "user_exist": True,
-        "has_role": True
     }
 
 
@@ -187,41 +190,40 @@ def create_admin_account(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/signup", tags=[AUTH_TAG])
-@limiter.limit(settings.AUTH_RATE_LIMIT)
-def signup(request: Request, payload: SignupRequest, db: Session = Depends(get_db)):
+@router.patch("/admin/{admin_id}", tags=[ADMIN_TAG])
+def update_admin_account(
+    admin_id: str,
+    payload: UpdateUserRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
     try:
-        # Check if user already exists
-        existing_user = get_user_by_phone(db, payload.phone_number)
-        is_new_user = not existing_user
-        
-        access, refresh = signup_user(db, payload)
-        
-        message = "User created successfully" if is_new_user else f"Role '{payload.role}' added successfully to existing account"
-        
+        if not user_has_role(db, admin_id, "admin"):
+            raise Exception("Admin account not found")
+        admin = update_user_details_service(db, admin_id, payload)
         return {
-            "message": message,
-            "access_token": access,
-            "refresh_token": refresh,
-            "token_type": "bearer",
-            "is_new_user": is_new_user
+            "message": "Admin account updated successfully",
+            "admin": admin
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@router.post("/signup", tags=[AUTH_TAG])
+@limiter.limit(settings.AUTH_RATE_LIMIT)
+def signup(request: Request):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Use role-specific signup endpoints"
+    )
+
 @router.post("/signin", tags=[AUTH_TAG])
 @limiter.limit(settings.AUTH_RATE_LIMIT)
-def signin(request: Request, payload: SigninRequest, db: Session = Depends(get_db)):
-    try:
-        access, refresh = signin_user(db, payload)
-        return {
-            "message": "Login successful",
-            "access_token": access,
-            "refresh_token": refresh,
-            "token_type": "bearer"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+def signin(request: Request):
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Use role-specific signin endpoints"
+    )
     
 @router.post("/refresh-token", tags=[AUTH_TAG])
 @limiter.limit(settings.REFRESH_RATE_LIMIT)
@@ -266,9 +268,11 @@ def admin_dashboard(current_admin=Depends(require_roles(["admin"]))):
 @router.get("/cleaner/jobs", tags=[CLEANER_TAG])
 def cleaner_jobs(
     db: Session = Depends(get_db),
-    current_cleaner=Depends(require_roles(["cleaner"]))
+    current_cleaner=Depends(require_roles(["cleaner"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
-    assignments = list_cleaner_assignments_service(db, current_cleaner.id)
+    assignments = list_cleaner_assignments_service(db, current_cleaner.id, limit=limit, offset=offset)
     assignment_list = [format_assignment(assignment) for assignment in assignments]
     return {
         "message": "Cleaner jobs fetched successfully",
@@ -278,9 +282,11 @@ def cleaner_jobs(
 @router.get("/customer/bookings", tags=[CUSTOMER_TAG])
 def customer_bookings(
     db: Session = Depends(get_db),
-    current_customer=Depends(require_roles(["customer"]))
+    current_customer=Depends(require_roles(["customer"])),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
 ):
-    bookings = get_customer_bookings_service(db, current_customer.id)
+    bookings = get_customer_bookings_service(db, current_customer.id, limit, offset)
     bookings_list = [format_customer_booking(booking) for booking in bookings]
     return {
         "message": "Customer bookings fetched successfully",

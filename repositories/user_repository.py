@@ -23,20 +23,26 @@ def create_user(db, user_data):
 def get_user_by_id(db, user_id):
     return db.query(User).filter(User.id == user_id).first()
 
-def get_all_users(db):
+def get_all_users(db, limit=50, offset=0):
     return (
         db.query(User)
         .options(joinedload(User.user_roles).joinedload(UserRole.role))
+        .order_by(User.created_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 
-def get_users_by_role(db, role_name):
+def get_users_by_role(db, role_name, limit=50, offset=0):
     return (
         db.query(User)
         .join(User.user_roles)
         .join(UserRole.role)
         .filter(Role.role_name == role_name.lower())
         .options(joinedload(User.user_roles).joinedload(UserRole.role))
+        .order_by(User.created_at.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 

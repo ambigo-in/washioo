@@ -3,8 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi import _rate_limit_exceeded_handler
+from sqlalchemy import text
 
-from core.database import Base, engine
+from core.config import settings
+from core.database import engine
 from core.rate_limiter import limiter
 
 from models import (
@@ -17,11 +19,14 @@ from models import (
     booking,
     cleaner_profile,
     booking_assignment,
+    payment,
 )
 
 from routers.auth_router import router as auth_router
 from routers.services_router import router as services_router
 from routers.user_router import router as user_router
+from routers.cleaner_router import router as cleaner_router
+from routers.customer_router import router as customer_router
 
 openapi_tags = [
     {
@@ -54,8 +59,6 @@ openapi_tags = [
     },
 ]
 
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Car Wash Service Portal API",
     description="Car Wash Service Backend",
@@ -67,19 +70,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# CORS Configuration
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "*"   # REMOVE in production
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=settings.CORS_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
@@ -89,6 +83,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(services_router)
 app.include_router(user_router)
+app.include_router(cleaner_router)
+app.include_router(customer_router)
 
 @app.get("/", tags=["Public APIs"])
 def root():
@@ -99,8 +95,13 @@ def root():
 
 @app.get("/health", tags=["Public APIs"])
 def health_check():
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
     return {
         "status": "healthy",
         "database": "connected",
         "version": "1.0.0"
     }
+
+
+

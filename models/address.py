@@ -16,8 +16,10 @@ class Address(Base):
     state = Column(String)
     pincode = Column(String)
     country = Column(String, default="India")
-    latitude = Column(Numeric(10, 8))
-    longitude = Column(Numeric(11, 8))
+    latitude = Column(Numeric(9, 6))
+    longitude = Column(Numeric(9, 6))
+    location_verified = Column(Boolean, default=False)
     is_default = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
