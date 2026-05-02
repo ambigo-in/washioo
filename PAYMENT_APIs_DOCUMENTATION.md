@@ -1,34 +1,382 @@
-# Payment Management APIs - Complete Overview
+# Payment APIs - Frontend Integration Guide
 
-## Current Payment System Architecture
+This document describes the current payment flow for the car/bike service platform.
 
-### Database Structure
+## Payment Flow
 
-- **payments** table tracks:
-  - `id` (UUID primary key)
-  - `booking_id` (FK to bookings)
-  - `customer_id` (FK to users)
-  - `payment_method` (Cash/UPI)
-  - `transaction_reference` (for external tracking)
-  - `amount` (decimal 10,2)
-  - `payment_status` (pending, paid, failed)
-  - `collected_by_cleaner` (boolean)
-  - `paid_at` (timestamp)
-  - `created_at`, `updated_at`
+1. Cleaner completes the wash assignment.
+2. Cleaner records collection from the customer:
+   - collected amount
+   - payment type: `upi` or `cash`
+3. Admin sees collected payments in the dashboard.
+4. Admin manually splits the amount:
+   - cleaner share
+   - admin share
+5. System updates cleaner earnings.
+6. Customer dashboard shows payment collection status and payment type only.
+7. Cleaner dashboard shows earnings after admin split.
+
+## Service Prices
+
+| Service | Price |
+| --- | ---: |
+| Bike Wash | 59 |
+| Car Wash | 199 |
+
+## Auth
+
+All endpoints require JWT auth.
+
+Use:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+## Payment Status Values
+
+The new payment workflow uses:
+
+| Status | Meaning |
+| --- | --- |
+| `pending_collection` | Booking is completed, but cleaner has not recorded payment collection yet |
+| `collected` | Cleaner recorded payment collection; waiting for admin split |
+| `split_done` | Admin split is complete; cleaner earnings are updated |
+
+## Payment Type Values
+
+```json
+"upi" | "cash"
+```
+
+Use lowercase values in new payment APIs.
+
+## Common Payment Object
+
+Admin and cleaner-facing payment APIs return this shape:
+
+```json
+{
+  "id": "payment_uuid",
+  "booking_id": "booking_uuid",
+  "customer_id": "customer_uuid",
+  "collected_amount": 59.0,
+  "payment_type": "upi",
+  "collected_by": "cleaner_profile_uuid",
+  "collected_at": "2026-05-02T18:30:00",
+  "cleaner_share": 40.0,
+  "admin_share": 19.0,
+  "split_updated_by": "admin_user_uuid",
+  "split_updated_at": "2026-05-02T18:45:00",
+  "status": "split_done",
+  "created_at": "2026-05-02T18:00:00",
+  "updated_at": "2026-05-02T18:45:00"
+}
+```
+
+Fields that are not completed yet are returned as `null`.
 
 ---
 
-## New Admin Payment Management APIs
+# New Payment Workflow APIs
 
-All payment endpoints are **admin-only** and use the `/payments` prefix.
+## 1. Cleaner Collects Payment
 
-### 1. **Get Payment Statistics**
-
+```http
+PATCH /bookings/{booking_id}/payment/collect
 ```
+
+Auth: Cleaner only
+
+Use this after the booking status is `completed`.
+
+### Request
+
+```json
+{
+  "amount": 59.0,
+  "payment_type": "upi"
+}
+```
+
+### Response
+
+```json
+{
+  "message": "Payment collection recorded successfully",
+  "payment": {
+    "id": "payment_uuid",
+    "booking_id": "booking_uuid",
+    "customer_id": "customer_uuid",
+    "collected_amount": 59.0,
+    "payment_type": "upi",
+    "collected_by": "cleaner_profile_uuid",
+    "collected_at": "2026-05-02T18:30:00",
+    "cleaner_share": null,
+    "admin_share": null,
+    "split_updated_by": null,
+    "split_updated_at": null,
+    "status": "collected",
+    "created_at": "2026-05-02T18:00:00",
+    "updated_at": "2026-05-02T18:30:00"
+  }
+}
+```
+
+### Frontend Notes
+
+- Show this action only to cleaners.
+- The booking must already be completed.
+- The cleaner can collect only for their own assigned booking.
+- Do not allow a second collection attempt once status is `collected` or `split_done`.
+
+### Possible Errors
+
+| Status | Detail |
+| --- | --- |
+| 400 | `Booking must be completed before payment collection` |
+| 400 | `Cleaner can only collect payment for their assigned booking` |
+| 400 | `Payment has already been collected` |
+| 400 | `Cannot collect payment after admin split` |
+| 403 | Cleaner role required |
+
+---
+
+## 2. Admin Lists Payments
+
+```http
+GET /admin/payments?status=collected&limit=50&offset=0
+```
+
+Auth: Admin only
+
+### Query Params
+
+| Param | Required | Values | Default |
+| --- | --- | --- | --- |
+| `status` | No | `pending_collection`, `collected`, `split_done` | all statuses |
+| `limit` | No | 1 to 100 | 50 |
+| `offset` | No | 0 or greater | 0 |
+
+### Response
+
+```json
+{
+  "message": "Payments fetched successfully",
+  "payments": [
+    {
+      "id": "payment_uuid",
+      "booking_id": "booking_uuid",
+      "customer_id": "customer_uuid",
+      "collected_amount": 59.0,
+      "payment_type": "cash",
+      "collected_by": "cleaner_profile_uuid",
+      "collected_at": "2026-05-02T18:30:00",
+      "cleaner_share": null,
+      "admin_share": null,
+      "split_updated_by": null,
+      "split_updated_at": null,
+      "status": "collected",
+      "created_at": "2026-05-02T18:00:00",
+      "updated_at": "2026-05-02T18:30:00"
+    }
+  ],
+  "total": 1
+}
+```
+
+### Frontend Notes
+
+- Admin dashboard should usually filter `status=collected` for payments waiting for split.
+- `pending_collection` can be used to show completed bookings where cleaner has not collected payment.
+- `split_done` can be used for payment history.
+
+---
+
+## 3. Admin Splits Payment
+
+```http
+PATCH /admin/payments/{payment_id}/split
+```
+
+Auth: Admin only
+
+### Request
+
+```json
+{
+  "cleaner_share": 40.0,
+  "admin_share": 19.0
+}
+```
+
+Validation:
+
+```text
+cleaner_share + admin_share must equal collected_amount
+```
+
+Example for Bike Wash:
+
+```text
+40 + 19 = 59
+```
+
+### Response
+
+```json
+{
+  "message": "Payment split applied successfully",
+  "payment": {
+    "id": "payment_uuid",
+    "booking_id": "booking_uuid",
+    "customer_id": "customer_uuid",
+    "collected_amount": 59.0,
+    "payment_type": "upi",
+    "collected_by": "cleaner_profile_uuid",
+    "collected_at": "2026-05-02T18:30:00",
+    "cleaner_share": 40.0,
+    "admin_share": 19.0,
+    "split_updated_by": "admin_user_uuid",
+    "split_updated_at": "2026-05-02T18:45:00",
+    "status": "split_done",
+    "created_at": "2026-05-02T18:00:00",
+    "updated_at": "2026-05-02T18:45:00"
+  }
+}
+```
+
+### Frontend Notes
+
+- Show split form only when payment status is `collected`.
+- After success, remove the payment from the "Awaiting Split" list.
+- Cleaner earnings update immediately after this endpoint succeeds.
+
+### Possible Errors
+
+| Status | Detail |
+| --- | --- |
+| 400 | `Payment must be collected before admin split` |
+| 400 | `Payment split has already been applied` |
+| 400 | `Cleaner share plus admin share must equal collected amount` |
+| 404/400 | `Payment not found` |
+| 403 | Admin role required |
+
+---
+
+## 4. Cleaner Earnings Summary
+
+```http
+GET /cleaner/earnings
+```
+
+Auth: Cleaner only
+
+### Response
+
+```json
+{
+  "message": "Cleaner earnings fetched successfully",
+  "earnings": {
+    "cleaner_id": "cleaner_profile_uuid",
+    "total_earned": 400.0,
+    "pending_payout": 400.0,
+    "last_updated": "2026-05-02T18:45:00"
+  }
+}
+```
+
+### Frontend Notes
+
+- `total_earned`: lifetime earnings recorded from admin splits.
+- `pending_payout`: amount currently owed to cleaner.
+- Values are `0` when the cleaner has no split payments yet.
+
+---
+
+## 5. Customer Payment Status
+
+```http
+GET /customer/bookings/{booking_id}/payment-status
+```
+
+Auth: Customer only
+
+This endpoint intentionally does not expose amount details.
+
+### Response - Not Collected
+
+```json
+{
+  "message": "Payment status fetched successfully",
+  "payment": {
+    "booking_id": "booking_uuid",
+    "status": "pending_collection",
+    "payment_type": null,
+    "message": "Payment not collected yet"
+  }
+}
+```
+
+### Response - Collected
+
+```json
+{
+  "message": "Payment status fetched successfully",
+  "payment": {
+    "booking_id": "booking_uuid",
+    "status": "collected",
+    "payment_type": "cash",
+    "message": "Payment collected via Cash"
+  }
+}
+```
+
+### Response - Split Done
+
+```json
+{
+  "message": "Payment status fetched successfully",
+  "payment": {
+    "booking_id": "booking_uuid",
+    "status": "split_done",
+    "payment_type": "upi",
+    "message": "Payment collected via UPI"
+  }
+}
+```
+
+### Frontend Notes
+
+- Customer UI should display the `payment.message`.
+- Do not show amount, cleaner share, or admin share on customer dashboard.
+- Customer can only fetch payment status for their own booking.
+
+---
+
+# Legacy Admin Payment APIs
+
+These endpoints still exist for backward compatibility with the old admin dashboard. New frontend work should prefer the workflow APIs above.
+
+Legacy status values:
+
+```json
+"pending" | "paid" | "failed"
+```
+
+Legacy payment method values:
+
+```json
+"UPI" | "Cash"
+```
+
+## Get Payment Statistics
+
+```http
 GET /payments/stats
 ```
 
-**Response:**
+Auth: Admin only
 
 ```json
 {
@@ -44,38 +392,30 @@ GET /payments/stats
 }
 ```
 
----
+## List Legacy Payments
 
-### 2. **List All Payments (with optional filters)**
-
-```
-GET /payments/?limit=50&offset=0&status=paid
+```http
+GET /payments/?status=pending&limit=50&offset=0
 ```
 
-**Query Parameters:**
-
-- `status` (optional): Filter by status (pending, paid, failed)
-- `limit` (default: 50): Number of records
-- `offset` (default: 0): Pagination offset
-
-**Response:**
+Auth: Admin only
 
 ```json
 {
   "message": "Payments fetched successfully",
   "payments": [
     {
-      "id": "uuid",
-      "booking_id": "uuid",
-      "customer_id": "uuid",
+      "id": "payment_uuid",
+      "booking_id": "booking_uuid",
+      "customer_id": "customer_uuid",
       "payment_method": "UPI",
-      "transaction_reference": "TXN123456",
-      "amount": 499.0,
-      "payment_status": "paid",
-      "collected_by_cleaner": false,
-      "paid_at": "2026-05-02T14:30:00",
-      "created_at": "2026-05-02T10:00:00",
-      "updated_at": "2026-05-02T14:30:00"
+      "transaction_reference": null,
+      "amount": 59.0,
+      "payment_status": "pending",
+      "collected_by_cleaner": true,
+      "paid_at": null,
+      "created_at": "2026-05-02T18:00:00",
+      "updated_at": "2026-05-02T18:30:00"
     }
   ],
   "total": 15,
@@ -85,291 +425,168 @@ GET /payments/?limit=50&offset=0&status=paid
 }
 ```
 
----
+## Get Legacy Payment by Booking
 
-### 3. **Get Payment by Booking**
-
-```
+```http
 GET /payments/booking/{booking_id}
 ```
 
-**Response:**
+Auth: Admin only
 
-```json
-{
-  "message": "Booking payment fetched successfully",
-  "payment": {
-    "id": "uuid",
-    "booking_id": "uuid",
-    "payment_method": "Cash",
-    "amount": 499.00,
-    "payment_status": "pending",
-    ...
-  }
-}
-```
+## Get Legacy Payments by Customer
 
----
-
-### 4. **Get Payments by Customer**
-
-```
+```http
 GET /payments/customer/{customer_id}?limit=50&offset=0
 ```
 
-**Response:**
+Auth: Admin only
 
-```json
-{
-  "message": "Customer payments fetched successfully",
-  "customer_id": "uuid",
-  "payments": [...],
-  "total": 5
-}
-```
+## Get Legacy Payment Details
 
----
-
-### 5. **Get Payment Details**
-
-```
+```http
 GET /payments/{payment_id}
 ```
 
-**Response:**
+Auth: Admin only
 
-```json
-{
-  "message": "Payment details fetched successfully",
-  "payment": {
-    "id": "uuid",
-    "booking_id": "uuid",
-    "customer_id": "uuid",
-    "payment_method": "UPI",
-    "transaction_reference": "TXN123456",
-    "amount": 499.0,
-    "payment_status": "paid",
-    "collected_by_cleaner": false,
-    "paid_at": "2026-05-02T14:30:00",
-    "created_at": "2026-05-02T10:00:00",
-    "updated_at": "2026-05-02T14:30:00"
-  }
-}
-```
+## Update Legacy Payment Manually
 
----
-
-### 6. **Update Payment Manually (Admin)**
-
-```
+```http
 PUT /payments/{payment_id}
 ```
 
-**Request Body:**
+Auth: Admin only
 
 ```json
 {
   "payment_method": "Cash",
   "payment_status": "paid",
   "transaction_reference": "TXN789012",
-  "amount": 550.0,
+  "amount": 59.0,
   "collected_by_cleaner": true,
-  "paid_at": "2026-05-02T15:00:00"
+  "paid_at": "2026-05-02T18:45:00"
 }
 ```
 
-**All fields are optional** - only provide fields you want to update.
+All fields are optional.
 
-**Response:**
+## Mark Legacy Payment as Paid
 
-```json
-{
-  "message": "Payment updated successfully",
-  "payment": {
-    "id": "uuid",
-    "payment_method": "Cash",
-    "payment_status": "paid",
-    ...
-  }
-}
-```
-
----
-
-### 7. **Quick Action: Mark Payment as Paid**
-
-```
+```http
 POST /payments/{payment_id}/mark-paid?transaction_reference=TXN123456
 ```
 
-**Query Parameters:**
+Auth: Admin only
 
-- `transaction_reference` (optional): Add transaction ID while marking paid
+## Mark Legacy Payment as Failed
 
-**Response:**
-
-```json
-{
-  "message": "Payment marked as paid successfully",
-  "payment": {
-    "id": "uuid",
-    "payment_status": "paid",
-    "paid_at": "2026-05-02T14:30:00",
-    ...
-  }
-}
-```
-
----
-
-### 8. **Quick Action: Mark Payment as Failed**
-
-```
+```http
 POST /payments/{payment_id}/mark-failed
 ```
 
-**Response:**
+Auth: Admin only
 
-```json
-{
-  "message": "Payment marked as failed successfully",
-  "payment": {
-    "id": "uuid",
-    "payment_status": "failed",
-    ...
-  }
-}
-```
+## Delete Legacy Payment
 
----
-
-### 9. **Delete Payment (Pending Only)**
-
-```
+```http
 DELETE /payments/{payment_id}
 ```
 
-**Restrictions:**
+Auth: Admin only
 
-- Only pending payments can be deleted
-- Use for data cleanup only
+Only legacy payments with `payment_status = "pending"` can be deleted.
 
-**Response:**
+---
+
+# Recommended Frontend Screens
+
+## Cleaner App
+
+- Complete assignment using existing assignment completion API.
+- After completion, show "Collect Payment" action.
+- Submit:
 
 ```json
 {
-  "message": "Payment deleted successfully"
+  "amount": 199.0,
+  "payment_type": "cash"
+}
+```
+
+- Show earnings card from `GET /cleaner/earnings`.
+
+## Admin Dashboard
+
+- Payment queue:
+
+```http
+GET /admin/payments?status=collected
+```
+
+- Split modal inputs:
+  - `cleaner_share`
+  - `admin_share`
+
+- Validate on frontend that:
+
+```text
+cleaner_share + admin_share === collected_amount
+```
+
+Backend still validates this.
+
+## Customer Dashboard
+
+- For each booking, call:
+
+```http
+GET /customer/bookings/{booking_id}/payment-status
+```
+
+- Display only:
+  - `payment.message`
+  - optional status badge
+
+---
+
+# Error Response Shape
+
+FastAPI validation and service errors return:
+
+```json
+{
+  "detail": "Error message"
+}
+```
+
+For request body validation errors, FastAPI may return:
+
+```json
+{
+  "detail": [
+    {
+      "type": "greater_than",
+      "loc": ["body", "amount"],
+      "msg": "Input should be greater than 0",
+      "input": 0,
+      "ctx": {
+        "gt": 0
+      }
+    }
+  ]
 }
 ```
 
 ---
 
-## Use Cases
+# Implementation Files
 
-### Scenario 1: Customer Pays via UPI
+- `schemas/payment_schema.py`
+- `models/payment.py`
+- `models/cleaner_earning.py`
+- `repositories/payment_repository.py`
+- `services/payment_service.py`
+- `routers/payment_router.py`
+- `db/migration/V6__payment_collection_and_cleaner_earnings.sql`
 
-1. Payment record created with `status: pending`
-2. Admin receives notification or manual entry
-3. Admin calls: `POST /payments/{id}/mark-paid?transaction_reference=UPI_TXN_XYZ`
-4. Payment status changes to `paid`, `paid_at` auto-set
-
-### Scenario 2: Manual Cash Payment Collection
-
-1. Cleaner collects cash from customer
-2. Admin updates payment:
-   ```
-   PUT /payments/{id}
-   {
-     "payment_method": "Cash",
-     "payment_status": "paid",
-     "collected_by_cleaner": true,
-     "amount": 499.00
-   }
-   ```
-
-### Scenario 3: Payment Failed - Update Amount
-
-1. Payment initially for 499
-2. Customer negotiates, needs to be 450
-3. Admin updates:
-   ```
-   PUT /payments/{id}
-   {
-     "amount": 450.00
-   }
-   ```
-
-### Scenario 4: View Payment Dashboard
-
-1. Admin calls: `GET /payments/stats`
-2. Get real-time: total pending, total paid, revenue
-3. Track cash flow and outstanding amounts
-
-### Scenario 5: Track Customer Payment History
-
-1. Admin calls: `GET /payments/customer/{cust_id}`
-2. See all payments made by that customer
-3. Identify payment patterns or issues
-
----
-
-## Database Integration
-
-### Automatic Fields
-
-- `created_at`: Set automatically on creation
-- `updated_at`: Updated automatically on any change
-- `paid_at`: Set automatically when marking as paid
-- `id`: UUID generated automatically
-
-### Manual Entry Points (Admin Controlled)
-
-- `payment_method` (Cash/UPI)
-- `payment_status` (pending/paid/failed)
-- `transaction_reference` (for tracking)
-- `amount`
-- `collected_by_cleaner`
-
----
-
-## Authorization
-
-✅ **Admin only** - All payment endpoints require admin role
-❌ Customers cannot view other customers' payments
-❌ Cleaners cannot modify payments directly
-
----
-
-## Error Handling
-
-| Error                                  | Status | Cause                                 |
-| -------------------------------------- | ------ | ------------------------------------- |
-| "Payment not found"                    | 404    | Invalid payment ID                    |
-| "Invalid status"                       | 400    | Status not in (pending, paid, failed) |
-| "Amount must be > 0"                   | 400    | Invalid amount value                  |
-| "Only pending payments can be deleted" | 400    | Trying to delete paid/failed          |
-| "Customer not found"                   | 400    | Invalid customer ID                   |
-
----
-
-## Files Created/Modified
-
-✅ `schemas/payment_schema.py` - PaymentUpdateRequest, PaymentResponse
-✅ `repositories/payment_repository.py` - DB operations
-✅ `services/payment_service.py` - Business logic
-✅ `routers/payment_router.py` - API endpoints
-✅ `main.py` - Router registration + OpenAPI tags
-
----
-
-## Next Steps (Optional)
-
-1. **Webhook Notifications**: Notify admin/cleaner when payment status changes
-2. **Payment Reconciliation**: Generate reports for accounting
-3. **Refund System**: Add refund endpoints for paid payments
-4. **Settlement**: Connect cleaner_settlements table for payouts
-5. **Audit Logs**: Track all payment changes with admin who made them
-
----
-
-**Status**: ✅ **Ready for Production**
+Status: Ready for frontend integration.

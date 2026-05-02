@@ -746,7 +746,7 @@ def complete_assignment(
     db: Session = Depends(get_db),
     current_cleaner=Depends(require_roles(["cleaner"]))
 ):
-    """Cleaner complete in-progress service"""
+    """Cleaner complete in-progress service and optionally submit payment collection details"""
     try:
         assignment = complete_assignment_service(db, current_cleaner.id, assignment_id, payload)
         return {

@@ -17,6 +17,7 @@ from repositories.cleaner_repository import (
 )
 from repositories.user_repository import get_user_with_roles
 from repositories.address_repository import get_user_default_address
+from repositories.payment_repository import create_payment, get_payment_by_booking_id, update_payment
 from core.security import hash_identifier, mask_identifier
 
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
@@ -68,6 +69,61 @@ def create_new_booking(db, customer_id, payload):
     
     booking = create_booking(db, booking_data)
     return booking
+
+def upsert_booking_payment(db, booking, payload):
+    """Create a pending payment record when a cleaner completes a booking.
+
+    Older clients may still send collection details on completion; when they do,
+    keep accepting that payload and mark the payment as collected.
+    """
+    payment = get_payment_by_booking_id(db, booking.id)
+    amount = getattr(payload, "collected_amount", None)
+    if amount is None:
+        amount = payload.final_price if payload.final_price is not None else booking.estimated_price
+    payload_payment_type = getattr(payload, "payment_type", None)
+    payment_type = payload_payment_type or (payload.payment_method.lower() if payload.payment_method else None)
+    payment_method = payment_type.upper() if payment_type == "upi" else "Cash" if payment_type == "cash" else payload.payment_method
+    status = "collected" if payment_type and payload.collected_by_cleaner else "pending_collection"
+    payment_data = {
+        "booking_id": booking.id,
+        "customer_id": booking.customer_id,
+        "amount": amount if status == "collected" else None,
+        "payment_status": "pending",
+        "payment_method": payment_method,
+        "transaction_reference": payload.transaction_reference,
+        "collected_by_cleaner": payload.collected_by_cleaner if payload.collected_by_cleaner is not None else False,
+        "collected_amount": amount if status == "collected" else None,
+        "payment_type": payment_type,
+        "collected_by": booking.assignment.cleaner_id if status == "collected" and booking.assignment else None,
+        "collected_at": datetime.utcnow() if status == "collected" else None,
+        "status": status,
+    }
+
+    if payment:
+        if payment.status == "split_done":
+            return payment
+        update_data = {
+            "payment_status": "pending",
+            "status": payment.status or "pending_collection",
+        }
+        if status == "collected" and payment.status != "collected":
+            update_data.update({
+                "amount": amount,
+                "payment_method": payment_method,
+                "collected_amount": amount,
+                "payment_type": payment_type,
+                "collected_by": booking.assignment.cleaner_id if booking.assignment else None,
+                "collected_at": datetime.utcnow(),
+                "status": "collected",
+            })
+        if payload.transaction_reference is not None:
+            update_data["transaction_reference"] = payload.transaction_reference
+        if payload.collected_by_cleaner is not None:
+            update_data["collected_by_cleaner"] = payload.collected_by_cleaner
+        return update_payment(db, payment.id, update_data)
+
+    return create_payment(db, payment_data)
+
 
 def get_customer_bookings_service(db, customer_id, limit=50, offset=0):
     """Get all bookings for a customer"""
@@ -328,6 +384,10 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
         booking_data["final_price"] = payload.final_price
     update_booking(db, assignment.booking_id, booking_data)
 
+    booking = get_booking_by_id(db, assignment.booking_id)
+    if booking:
+        upsert_booking_payment(db, booking, payload)
+
     cleaner = get_cleaner_profile_by_id(db, assignment.cleaner_id)
     update_cleaner_profile(db, assignment.cleaner_id, {
         "availability_status": "available",
@@ -372,15 +432,65 @@ def format_vehicle_details(booking):
 def format_payment_summary(booking):
     payment = getattr(booking, "payment", None)
     if payment:
+        amount = (
+            payment.collected_amount
+            if payment.collected_amount is not None
+            else payment.amount
+        )
         return {
-            "payment_status": payment.payment_status,
-            "amount": float(payment.amount) if payment.amount is not None else 0,
+            "payment_status": payment.status or "pending_collection",
+            "legacy_payment_status": payment.payment_status,
+            "payment_type": payment.payment_type,
+            "payment_method": payment.payment_method,
+            "amount": float(amount) if amount is not None else 0,
+            "collected_amount": float(payment.collected_amount) if payment.collected_amount is not None else None,
+            "cleaner_share": float(payment.cleaner_share) if payment.cleaner_share is not None else None,
+            "admin_share": float(payment.admin_share) if payment.admin_share is not None else None,
+            "cleaner_handover_status": getattr(payment, "cleaner_handover_status", "pending"),
+            "transaction_reference": payment.transaction_reference,
+            "collected_by_cleaner": payment.collected_by_cleaner,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
         }
 
     amount = booking.final_price if booking.final_price is not None else booking.estimated_price
     return {
-        "payment_status": "pending",
+        "payment_status": "pending_collection",
+        "legacy_payment_status": "pending",
+        "payment_type": None,
+        "payment_method": None,
         "amount": float(amount) if amount is not None else 0,
+        "collected_amount": None,
+        "cleaner_share": None,
+        "admin_share": None,
+        "cleaner_handover_status": "pending",
+    }
+
+
+def format_customer_payment_summary(booking):
+    payment = getattr(booking, "payment", None)
+    amount = booking.final_price if booking.final_price is not None else booking.estimated_price
+    if not payment:
+        return {
+            "payment_status": "pending",
+            "payment_type": None,
+            "amount": float(amount) if amount is not None else 0,
+        }
+
+    collected_amount = (
+        payment.collected_amount
+        if payment.collected_amount is not None
+        else payment.amount
+    )
+    customer_status = "pending"
+    if payment.payment_status == "failed":
+        customer_status = "failed"
+    elif payment.status in ["collected", "split_done"]:
+        customer_status = "done"
+
+    return {
+        "payment_status": customer_status,
+        "payment_type": payment.payment_type,
+        "amount": float(collected_amount) if collected_amount is not None else float(amount),
     }
 
 
@@ -399,7 +509,7 @@ def format_customer_booking(booking):
         "address": format_address(booking.address),
         "assignment": format_assignment_summary(booking.assignment),
         "vehicle_details": format_vehicle_details(booking),
-        "payment": format_payment_summary(booking),
+        "payment": format_customer_payment_summary(booking),
         "created_at": booking.created_at.isoformat()
     }
 
@@ -465,6 +575,11 @@ def format_assignment_summary(assignment):
     return {
         "id": str(assignment.id),
         "cleaner_id": str(assignment.cleaner_id),
+        "cleaner_name": (
+            assignment.cleaner.user.full_name
+            if assignment.cleaner and assignment.cleaner.user
+            else None
+        ),
         "assignment_status": assignment.assignment_status,
         "assigned_at": assignment.assigned_at.isoformat() if assignment.assigned_at else None,
         "accepted_at": assignment.accepted_at.isoformat() if assignment.accepted_at else None,
@@ -484,6 +599,3 @@ def format_assignment(assignment):
         "cleaner": format_cleaner_profile(assignment.cleaner),
         "booking": format_admin_booking(booking) if booking else None,
     }
-
-
-

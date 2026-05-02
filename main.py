@@ -18,6 +18,7 @@ from models import (
     service_category,
     booking,
     cleaner_profile,
+    cleaner_earning,
     booking_assignment,
     payment,
 )
@@ -28,6 +29,7 @@ from routers.user_router import router as user_router
 from routers.cleaner_router import router as cleaner_router
 from routers.customer_router import router as customer_router
 from routers.payment_router import router as payment_router
+from routers.payment_router import workflow_router as payment_workflow_router
 
 openapi_tags = [
     {
@@ -60,7 +62,7 @@ openapi_tags = [
     },
     {
         "name": "Payment APIs",
-        "description": "Admin-only payment management and manual update endpoints.",
+        "description": "Payment collection, admin split, cleaner earnings, and legacy admin payment endpoints.",
     },
 ]
 
@@ -91,6 +93,7 @@ app.include_router(user_router)
 app.include_router(cleaner_router)
 app.include_router(customer_router)
 app.include_router(payment_router)
+app.include_router(payment_workflow_router)
 
 @app.get("/", tags=["Public APIs"])
 def root():
@@ -108,6 +111,4 @@ def health_check():
         "database": "connected",
         "version": "1.0.0"
     }
-
-
 

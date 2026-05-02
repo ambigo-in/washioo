@@ -1,4 +1,5 @@
 from models.payment import Payment
+from models.cleaner_earning import CleanerEarning
 from models.booking import Booking
 from sqlalchemy.orm import joinedload
 
@@ -9,6 +10,14 @@ def get_payment_by_id(db, payment_id):
 
 def get_payment_by_booking_id(db, booking_id):
     return db.query(Payment).filter(Payment.booking_id == booking_id).first()
+
+
+def get_payment_by_booking_id_for_update(db, booking_id):
+    return db.query(Payment).filter(Payment.booking_id == booking_id).with_for_update().first()
+
+
+def get_payment_by_id_for_update(db, payment_id):
+    return db.query(Payment).filter(Payment.id == payment_id).with_for_update().first()
 
 
 def get_all_payments(db, limit=50, offset=0):
@@ -31,6 +40,32 @@ def get_payments_by_status(db, status, limit=50, offset=0):
         .limit(limit)
         .offset(offset)
         .all()
+    )
+
+
+def get_admin_collection_payments(db, status=None, cleaner_handover_status=None, limit=50, offset=0):
+    query = (
+        db.query(Payment)
+        .options(joinedload(Payment.booking).joinedload(Booking.customer))
+    )
+    if status:
+        query = query.filter(Payment.status == status)
+    if cleaner_handover_status:
+        query = query.filter(Payment.cleaner_handover_status == cleaner_handover_status)
+
+    return query.order_by(Payment.created_at.desc()).offset(offset).limit(limit).all()
+
+
+def get_cleaner_earning_by_cleaner_id(db, cleaner_id):
+    return db.query(CleanerEarning).filter(CleanerEarning.cleaner_id == cleaner_id).first()
+
+
+def get_cleaner_earning_by_cleaner_id_for_update(db, cleaner_id):
+    return (
+        db.query(CleanerEarning)
+        .filter(CleanerEarning.cleaner_id == cleaner_id)
+        .with_for_update()
+        .first()
     )
 
 

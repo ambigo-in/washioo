@@ -1,4 +1,6 @@
 from models.booking import Booking
+from models.booking_assignment import BookingAssignment
+from models.cleaner_profile import CleanerProfile
 from sqlalchemy.orm import joinedload
 
 def create_booking(db, booking_data):
@@ -17,7 +19,7 @@ def get_booking_by_id(db, booking_id):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
-            joinedload(Booking.assignment),
+            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
         .filter(Booking.id == booking_id)
@@ -35,7 +37,7 @@ def get_customer_bookings(db, customer_id, limit=50, offset=0):
         .options(
             joinedload(Booking.service_category),
             joinedload(Booking.address),
-            joinedload(Booking.assignment),
+            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
         .filter(Booking.customer_id == customer_id)
@@ -53,7 +55,7 @@ def get_all_bookings(db, limit=50, offset=0):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
-            joinedload(Booking.assignment),
+            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
         .order_by(Booking.created_at.desc())
@@ -70,7 +72,7 @@ def get_bookings_by_status(db, status, limit=50, offset=0):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
-            joinedload(Booking.assignment),
+            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
         .filter(Booking.booking_status == status)
@@ -87,7 +89,7 @@ def get_customer_booking_by_id(db, customer_id, booking_id):
         .options(
             joinedload(Booking.service_category),
             joinedload(Booking.address),
-            joinedload(Booking.assignment),
+            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
         .filter(Booking.id == booking_id, Booking.customer_id == customer_id)

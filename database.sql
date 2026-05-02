@@ -164,9 +164,13 @@ CREATE TABLE IF NOT EXISTS service_categories (
 
 INSERT INTO service_categories (service_name, description, base_price, estimated_duration_minutes)
 VALUES
-('Car Wash', 'Exterior and interior car wash service', 499.00, 60),
-('Bike Wash', 'Complete bike wash service', 199.00, 30)
+('Car Wash', 'Exterior and interior car wash service', 199.00, 60),
+('Bike Wash', 'Complete bike wash service', 59.00, 30)
 ON CONFLICT (service_name) DO NOTHING;
+
+UPDATE service_categories
+SET base_price = 199.00
+WHERE service_name = 'Car Wash';
 
 -- ============================================================
 -- 9. BOOKINGS TABLE
@@ -225,25 +229,54 @@ CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     booking_id UUID UNIQUE NOT NULL,
     customer_id UUID NOT NULL,
-    payment_method VARCHAR(30) NOT NULL,
-    -- UPI / Cash
+    payment_method VARCHAR(30),
+    -- Legacy UPI / Cash field
     transaction_reference VARCHAR(255),
-    amount NUMERIC(10,2) NOT NULL,
+    amount NUMERIC(10,2),
     payment_status VARCHAR(30) DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
-    -- pending, paid, failed
+    -- Legacy pending, paid, failed status
     collected_by_cleaner BOOLEAN DEFAULT FALSE,
     paid_at TIMESTAMP,
+    collected_amount NUMERIC(10,2),
+    payment_type VARCHAR(20) CHECK (payment_type IS NULL OR payment_type IN ('cash', 'upi')),
+    collected_by UUID,
+    collected_at TIMESTAMP,
+    cleaner_share NUMERIC(10,2),
+    admin_share NUMERIC(10,2),
+    split_updated_by UUID,
+    split_updated_at TIMESTAMP,
+    payout_released BOOLEAN NOT NULL DEFAULT FALSE,
+    cleaner_handover_status VARCHAR(30) NOT NULL DEFAULT 'pending' CHECK (cleaner_handover_status IN ('pending', 'settled')),
+    status VARCHAR(30) NOT NULL DEFAULT 'pending_collection' CHECK (status IN ('pending_collection', 'collected', 'split_done')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
-    FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE RESTRICT
+    FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (collected_by) REFERENCES cleaner_profiles(id) ON DELETE RESTRICT,
+    FOREIGN KEY (split_updated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_payments_status ON payments(payment_status);
 CREATE INDEX idx_payments_method ON payments(payment_method);
+CREATE INDEX idx_payments_collection_status ON payments(status);
+CREATE INDEX idx_payments_collected_by ON payments(collected_by);
 
 -- ============================================================
--- 12. CLEANER SETTLEMENTS TABLE
+-- 12. CLEANER EARNINGS TABLE
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cleaner_earnings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    cleaner_id UUID UNIQUE NOT NULL,
+    total_earned NUMERIC(10,2) NOT NULL DEFAULT 0,
+    pending_payout NUMERIC(10,2) NOT NULL DEFAULT 0,
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cleaner_id) REFERENCES cleaner_profiles(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_cleaner_earnings_cleaner ON cleaner_earnings(cleaner_id);
+
+-- ============================================================
+-- 13. CLEANER SETTLEMENTS TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cleaner_settlements (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -268,7 +301,7 @@ CREATE TABLE IF NOT EXISTS cleaner_settlements (
 CREATE INDEX idx_settlements_status ON cleaner_settlements(settlement_status);
 
 -- ============================================================
--- 13. NOTIFICATIONS TABLE
+-- 14. NOTIFICATIONS TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -284,7 +317,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 
 -- ============================================================
--- 14. REVIEWS TABLE
+-- 15. REVIEWS TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -300,7 +333,7 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 -- ============================================================
--- 15. AUDIT LOGS TABLE
+-- 16. AUDIT LOGS TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

@@ -144,6 +144,11 @@ class CleanerAssignmentActionRequest(BaseModel):
 class CompleteAssignmentRequest(BaseModel):
     cleaner_notes: Optional[str] = None
     final_price: Optional[Decimal] = Field(default=None, gt=0)
+    payment_method: Optional[Literal["UPI", "Cash"]] = None
+    payment_type: Optional[Literal["upi", "cash"]] = None
+    collected_amount: Optional[Decimal] = Field(default=None, gt=0)
+    transaction_reference: Optional[str] = None
+    collected_by_cleaner: Optional[bool] = None
 
 class BookingResponse(BaseModel):
     id: str
@@ -179,5 +184,4 @@ class AdminBookingResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 

@@ -27,3 +27,4 @@ class CleanerProfile(Base):
 
     user = relationship("User", back_populates="cleaner_profile")
     assignments = relationship("BookingAssignment", back_populates="cleaner")
+    earnings = relationship("CleanerEarning", back_populates="cleaner", uselist=False, cascade="all, delete-orphan")
