@@ -84,7 +84,8 @@ CREATE INDEX idx_otp_expiry ON otp_codes(expires_at);
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL,
-    token_hash VARCHAR(255) UNIQUE NOT NULL,
+    jti VARCHAR(255) UNIQUE NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     revoked_at TIMESTAMP,
     created_ip VARCHAR(64),
@@ -94,6 +95,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX idx_refresh_user ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_jti ON refresh_tokens(jti);
 
 -- ============================================================
 -- 6. USER ADDRESSES TABLE

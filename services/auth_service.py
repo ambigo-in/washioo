@@ -54,14 +54,15 @@ def signup_user(db, payload):
         "role": role.role_name
     })
 
-    refresh_token = create_refresh_token({
+    refresh_token, jti = create_refresh_token({
         "sub": str(user.id)
     })
 
     save_refresh_token(
         db,
         user.id,
-        refresh_token,  # Store raw JWT - JWTs are self-verifying via signature
+        jti,
+        refresh_token,
         datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
 
@@ -79,12 +80,13 @@ def signin_user(db, payload):
         raise Exception("Invalid OTP")
 
     access_token = create_access_token({"sub": str(user.id)})
-    refresh_token = create_refresh_token({"sub": str(user.id)})
+    refresh_token, jti = create_refresh_token({"sub": str(user.id)})
 
     save_refresh_token(
         db,
         user.id,
-        refresh_token,  # Store raw JWT - JWTs are self-verifying via signature
+        jti,
+        refresh_token,
         datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     )
 
