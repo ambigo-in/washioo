@@ -80,6 +80,20 @@ class UpdateServiceRequest(BaseModel):
     estimated_duration_minutes: Optional[int] = Field(default=None, gt=0)
     is_active: Optional[bool] = None
 
+class CreateCustomerVehicleRequest(BaseModel):
+    vehicle_type: Literal["bike", "car"]
+    make: Optional[str] = Field(default=None, max_length=100)
+    model: Optional[str] = Field(default=None, max_length=100)
+    license_plate: Optional[str] = Field(default=None, max_length=30)
+    is_default: Optional[bool] = False
+
+class UpdateCustomerVehicleRequest(BaseModel):
+    vehicle_type: Optional[Literal["bike", "car"]] = None
+    make: Optional[str] = Field(default=None, max_length=100)
+    model: Optional[str] = Field(default=None, max_length=100)
+    license_plate: Optional[str] = Field(default=None, max_length=30)
+    is_default: Optional[bool] = None
+
 class ServiceCategorySchema(BaseModel):
     id: str
     service_name: str
@@ -95,6 +109,7 @@ class CreateBookingRequest(BaseModel):
     service_category_id: str
     address_id: Optional[str] = None  # If null, use default address
     address: Optional[CreateAddressRequest] = None  # Create new address if provided
+    vehicle_id: Optional[str] = None
     scheduled_date: date
     scheduled_time: time
     special_instructions: Optional[str] = None
@@ -102,6 +117,7 @@ class CreateBookingRequest(BaseModel):
 class UpdateBookingRequest(BaseModel):
     service_category_id: Optional[str] = None
     address_id: Optional[str] = None
+    vehicle_id: Optional[str] = None
     scheduled_date: Optional[date] = None
     scheduled_time: Optional[time] = None
     special_instructions: Optional[str] = None
@@ -184,4 +200,3 @@ class AdminBookingResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

@@ -18,6 +18,15 @@ from repositories.cleaner_repository import (
 from repositories.user_repository import get_user_with_roles
 from repositories.address_repository import get_user_default_address
 from repositories.payment_repository import create_payment, get_payment_by_booking_id, update_payment
+from repositories.customer_vehicle_repository import (
+    create_vehicle,
+    delete_vehicle,
+    get_customer_default_vehicle,
+    get_customer_vehicle_by_id,
+    get_customer_vehicles,
+    unset_customer_default_vehicles,
+    update_vehicle,
+)
 from core.security import hash_identifier, mask_identifier
 
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
@@ -53,6 +62,17 @@ def create_new_booking(db, customer_id, payload):
     address = get_address_by_id(db, address_id)
     if not address or address.user_id != customer_id:
         raise Exception("Invalid address")
+
+    vehicle_id = getattr(payload, "vehicle_id", None)
+    vehicle = None
+    if vehicle_id:
+        vehicle = get_customer_vehicle_by_id(db, customer_id, vehicle_id)
+        if not vehicle:
+            raise Exception("Invalid vehicle")
+    else:
+        vehicle = get_customer_default_vehicle(db, customer_id)
+        if vehicle:
+            vehicle_id = str(vehicle.id)
     
     # Create booking
     booking_data = {
@@ -60,12 +80,20 @@ def create_new_booking(db, customer_id, payload):
         "customer_id": customer_id,
         "service_category_id": payload.service_category_id,
         "address_id": address_id,
+        "vehicle_id": vehicle_id,
         "scheduled_date": payload.scheduled_date,
         "scheduled_time": payload.scheduled_time,
         "special_instructions": payload.special_instructions,
         "booking_status": "pending",
         "estimated_price": service.base_price
     }
+
+    if vehicle:
+        booking_data.update({
+            "vehicle_make": vehicle.make,
+            "vehicle_model": vehicle.model,
+            "license_plate": vehicle.license_plate,
+        })
     
     booking = create_booking(db, booking_data)
     return booking
@@ -176,7 +204,49 @@ def update_customer_booking_service(db, customer_id, booking_id, payload):
         if not address or address.user_id != customer_id:
             raise Exception("Invalid address")
 
+    if "vehicle_id" in booking_data:
+        if booking_data["vehicle_id"] is None:
+            booking_data.update({
+                "vehicle_make": None,
+                "vehicle_model": None,
+                "license_plate": None,
+            })
+        else:
+            vehicle = get_customer_vehicle_by_id(db, customer_id, booking_data["vehicle_id"])
+            if not vehicle:
+                raise Exception("Invalid vehicle")
+            booking_data.update({
+                "vehicle_make": vehicle.make,
+                "vehicle_model": vehicle.model,
+                "license_plate": vehicle.license_plate,
+            })
+
     return update_booking(db, booking_id, booking_data)
+
+def create_customer_vehicle_service(db, customer_id, payload):
+    vehicle_data = payload.model_dump(exclude_unset=True)
+    vehicle_data["customer_id"] = customer_id
+    if vehicle_data.get("is_default"):
+        unset_customer_default_vehicles(db, customer_id)
+    return create_vehicle(db, vehicle_data)
+
+def list_customer_vehicles_service(db, customer_id):
+    return get_customer_vehicles(db, customer_id)
+
+def update_customer_vehicle_service(db, customer_id, vehicle_id, payload):
+    vehicle = get_customer_vehicle_by_id(db, customer_id, vehicle_id)
+    if not vehicle:
+        raise Exception("Vehicle not found")
+    vehicle_data = payload.model_dump(exclude_unset=True)
+    if vehicle_data.get("is_default"):
+        unset_customer_default_vehicles(db, customer_id)
+    return update_vehicle(db, vehicle, vehicle_data)
+
+def delete_customer_vehicle_service(db, customer_id, vehicle_id):
+    vehicle = get_customer_vehicle_by_id(db, customer_id, vehicle_id)
+    if not vehicle:
+        raise Exception("Vehicle not found")
+    delete_vehicle(db, vehicle)
 
 def cancel_customer_booking_service(db, customer_id, booking_id):
     booking = get_customer_booking_by_id(db, customer_id, booking_id)
@@ -424,9 +494,23 @@ def format_cleaner_booking_detail(booking):
 
 def format_vehicle_details(booking):
     return {
+        "id": str(booking.vehicle_id) if getattr(booking, "vehicle_id", None) else None,
         "make": getattr(booking, "vehicle_make", None),
         "model": getattr(booking, "vehicle_model", None),
         "license_plate": getattr(booking, "license_plate", None),
+    }
+
+def format_customer_vehicle(vehicle):
+    return {
+        "id": str(vehicle.id),
+        "customer_id": str(vehicle.customer_id),
+        "vehicle_type": vehicle.vehicle_type,
+        "make": vehicle.make,
+        "model": vehicle.model,
+        "license_plate": vehicle.license_plate,
+        "is_default": bool(vehicle.is_default),
+        "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
+        "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None,
     }
 
 def format_payment_summary(booking):

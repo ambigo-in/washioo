@@ -24,6 +24,7 @@ from models import (
     service_category,
     booking,
     cleaner_profile,
+    customer_vehicle,
     cleaner_earning,
     cleaner_settlement,
     notification,

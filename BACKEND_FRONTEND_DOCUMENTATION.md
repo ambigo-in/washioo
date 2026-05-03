@@ -5,13 +5,15 @@ This document is the frontend integration guide for the current FastAPI backend 
 It reflects the latest production-oriented backend changes:
 
 - Role-specific auth APIs for Customer, Cleaner, and Admin.
-- Generic `/auth/send-otp`, `/auth/signup`, and `/auth/signin` are disabled.
+- All application APIs are served under `/washioo-api`.
+- Generic `/washioo-api/auth/send-otp`, `/washioo-api/auth/signup`, and `/washioo-api/auth/signin` are disabled.
 - First admin is created by Flyway SQL migration.
 - Existing admins can create or update other admins through protected APIs.
 - Cleaner signup requires Aadhaar number and optionally accepts driving license number.
 - Aadhaar and driving license are never returned in full; responses contain masked values and boolean flags.
 - Booking status changes are controlled by lifecycle APIs, not arbitrary admin status patches.
 - Major list APIs support pagination with `limit` and `offset`.
+- Production responses avoid leaking raw exception strings; unexpected errors return generic messages.
 
 ## Source Files
 
@@ -21,23 +23,31 @@ It reflects the latest production-oriented backend changes:
 | Auth APIs | `routers/auth_router.py` |
 | User APIs | `routers/user_router.py` |
 | Services, address, booking, cleaner, assignment APIs | `routers/services_router.py` |
+| Payment APIs | `routers/payment_router.py` |
+| Rating APIs | `routers/rating_router.py` |
 | Auth schemas | `schemas/auth_schema.py` |
 | Booking/service schemas | `schemas/booking_schema.py` |
 | User schemas | `schemas/user_schema.py` |
+| Payment schemas | `schemas/payment_schema.py` |
+| Rating schemas | `schemas/rating_schema.py` |
 | Booking and cleaner business logic | `services/booking_service.py` |
 | Auth business logic | `services/auth_service.py` |
 | User business logic | `services/user_service.py` |
-| Flyway migrations | `db/migration/` |
+| Payment business logic | `services/payment_service.py` |
+| Rating business logic | `services/rating_service.py` |
+| Versioned SQL migrations | `db/migration/` |
+| Alembic scaffold | `alembic.ini`, `alembic/env.py` |
+| Deployment files | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `Procfile` |
 
 ## Base URL
 
 Local default:
 
 ```txt
-http://localhost:8000
+http://localhost:8000/washioo-api
 ```
 
-OpenAPI:
+OpenAPI docs are not under the API prefix:
 
 ```txt
 GET /docs
@@ -55,7 +65,7 @@ Authorization: Bearer <access_token>
 
 Tokens are returned by role-specific signup/signin and refresh APIs.
 
-Refresh tokens rotate. After calling `/auth/refresh-token`, replace both stored tokens on the frontend.
+Refresh tokens rotate. After calling `/washioo-api/auth/refresh-token`, replace both stored tokens on the frontend.
 
 ## Roles
 
@@ -73,14 +83,14 @@ Recommended routing:
 
 | Auth API | Route user to |
 | --- | --- |
-| `/auth/customer/signin` | Customer app/dashboard |
-| `/auth/cleaner/signin` | Cleaner app/dashboard |
-| `/auth/admin/signin` | Admin dashboard |
+| `/washioo-api/auth/customer/signin` | Customer app/dashboard |
+| `/washioo-api/auth/cleaner/signin` | Cleaner app/dashboard |
+| `/washioo-api/auth/admin/signin` | Admin dashboard |
 
 You can also call:
 
 ```http
-GET /auth/me
+GET /washioo-api/auth/me
 ```
 
 to get the authenticated user's roles.
@@ -92,9 +102,9 @@ to get the authenticated user's roles.
 Do not use these APIs in frontend flows:
 
 ```txt
-POST /auth/send-otp
-POST /auth/signup
-POST /auth/signin
+POST /washioo-api/auth/send-otp
+POST /washioo-api/auth/signup
+POST /washioo-api/auth/signin
 ```
 
 They return `410 Gone`.
@@ -111,8 +121,8 @@ First admin:
 
 Additional admins:
 
-- Created by an existing admin through `POST /auth/admin/create`.
-- Updated by an existing admin through `PATCH /auth/admin/{admin_id}`.
+- Created by an existing admin through `POST /washioo-api/auth/admin/create`.
+- Updated by an existing admin through `PATCH /washioo-api/auth/admin/{admin_id}`.
 
 ### Cleaner Identity
 
@@ -192,7 +202,7 @@ offset >= 0
 Example:
 
 ```http
-GET /services/my-bookings?limit=20&offset=0
+GET /washioo-api/services/my-bookings?limit=20&offset=0
 ```
 
 The response uses:
@@ -370,89 +380,119 @@ Never show full identity numbers. Only masked values are returned.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | API status |
-| `GET` | `/health` | API and database health |
-| `GET` | `/services/?limit=50&offset=0` | List active service categories |
-| `GET` | `/services/service-categories/{service_id}` | Get service category |
+| `GET` | `/washioo-api/` | API status |
+| `GET` | `/washioo-api/health` | API and database health |
+| `GET` | `/washioo-api/services/?limit=50&offset=0` | List active service categories |
+| `GET` | `/washioo-api/services/service-categories/{service_id}` | Get service category |
 
 ### Auth
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/auth/customer/send-otp` | Public | Send customer OTP |
-| `POST` | `/auth/customer/signup` | Public | Customer signup |
-| `POST` | `/auth/customer/signin` | Public | Customer signin |
-| `POST` | `/auth/cleaner/send-otp` | Public | Send cleaner OTP |
-| `POST` | `/auth/cleaner/signup` | Public | Cleaner signup |
-| `POST` | `/auth/cleaner/signin` | Public | Cleaner signin |
-| `POST` | `/auth/admin/send-otp` | Public | Send admin OTP if admin exists |
-| `POST` | `/auth/admin/signin` | Public | Admin signin |
-| `POST` | `/auth/admin/create` | Admin | Create another admin |
-| `PATCH` | `/auth/admin/{admin_id}` | Admin | Update an admin account |
-| `POST` | `/auth/refresh-token` | Public | Rotate refresh token |
-| `POST` | `/auth/logout` | Any authenticated role | Revoke refresh token |
-| `GET` | `/auth/me` | Any authenticated role | Current profile |
-| `GET` | `/auth/admin/dashboard` | Admin | Admin dashboard check |
-| `GET` | `/auth/cleaner/jobs?limit=50&offset=0` | Cleaner | Cleaner jobs alias |
-| `GET` | `/auth/customer/bookings?limit=50&offset=0` | Customer | Customer bookings alias |
+| `POST` | `/washioo-api/auth/customer/send-otp` | Public | Send customer OTP |
+| `POST` | `/washioo-api/auth/customer/signup` | Public | Customer signup |
+| `POST` | `/washioo-api/auth/customer/signin` | Public | Customer signin |
+| `POST` | `/washioo-api/auth/cleaner/send-otp` | Public | Send cleaner OTP |
+| `POST` | `/washioo-api/auth/cleaner/signup` | Public | Cleaner signup |
+| `POST` | `/washioo-api/auth/cleaner/signin` | Public | Cleaner signin |
+| `POST` | `/washioo-api/auth/admin/send-otp` | Public | Send admin OTP if admin exists |
+| `POST` | `/washioo-api/auth/admin/signin` | Public | Admin signin |
+| `POST` | `/washioo-api/auth/admin/create` | Admin | Create another admin |
+| `PATCH` | `/washioo-api/auth/admin/{admin_id}` | Admin | Update an admin account |
+| `POST` | `/washioo-api/auth/refresh-token` | Public | Rotate refresh token |
+| `POST` | `/washioo-api/auth/logout` | Any authenticated role | Revoke refresh token |
+| `GET` | `/washioo-api/auth/me` | Any authenticated role | Current profile |
+| `GET` | `/washioo-api/auth/admin/dashboard` | Admin | Admin dashboard check |
+| `GET` | `/washioo-api/auth/cleaner/jobs?limit=50&offset=0` | Cleaner | Cleaner jobs alias |
+| `GET` | `/washioo-api/auth/customer/bookings?limit=50&offset=0` | Customer | Customer bookings alias |
 
 ### Users
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/users/me` | Any authenticated role | Current profile |
-| `PATCH` | `/users/me` | Any authenticated role | Update own profile |
-| `GET` | `/users/?role=customer&limit=50&offset=0` | Admin | List users |
-| `GET` | `/users/{user_id}` | Admin | Get user |
-| `PUT` | `/users/{user_id}` | Admin | Update user |
-| `DELETE` | `/users/{user_id}` | Admin | Delete user |
+| `GET` | `/washioo-api/users/me` | Any authenticated role | Current profile |
+| `PATCH` | `/washioo-api/users/me` | Any authenticated role | Update own profile |
+| `GET` | `/washioo-api/users/?role=customer&limit=50&offset=0` | Admin | List users |
+| `GET` | `/washioo-api/users/{user_id}` | Admin | Get user |
+| `PUT` | `/washioo-api/users/{user_id}` | Admin | Update user |
+| `DELETE` | `/washioo-api/users/{user_id}` | Admin | Delete user |
 
 ### Customer
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/services/address` | Customer | Create address |
-| `GET` | `/services/addresses` | Customer | List own addresses |
-| `PATCH` | `/services/address/{address_id}` | Customer | Update own address |
-| `DELETE` | `/services/address/{address_id}` | Customer | Delete own address |
-| `POST` | `/services/book` | Customer | Create booking |
-| `GET` | `/services/my-bookings?limit=50&offset=0` | Customer | List own bookings |
-| `GET` | `/services/my-bookings/{booking_id}` | Customer | Get own booking |
-| `PATCH` | `/services/my-bookings/{booking_id}` | Customer | Update pending own booking |
-| `POST` | `/services/my-bookings/{booking_id}/cancel` | Customer | Cancel pending own booking |
+| `POST` | `/washioo-api/services/address` | Customer | Create address |
+| `GET` | `/washioo-api/services/addresses` | Customer | List own addresses |
+| `PATCH` | `/washioo-api/services/address/{address_id}` | Customer | Update own address |
+| `DELETE` | `/washioo-api/services/address/{address_id}` | Customer | Delete own address |
+| `POST` | `/washioo-api/services/book` | Customer | Create booking |
+| `GET` | `/washioo-api/services/my-bookings?limit=50&offset=0` | Customer | List own bookings |
+| `GET` | `/washioo-api/services/my-bookings/{booking_id}` | Customer | Get own booking |
+| `PATCH` | `/washioo-api/services/my-bookings/{booking_id}` | Customer | Update pending own booking |
+| `POST` | `/washioo-api/services/my-bookings/{booking_id}/cancel` | Customer | Cancel pending own booking |
 
 ### Cleaner
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/services/cleaner/profile` | Cleaner | Get own cleaner profile |
-| `PATCH` | `/services/cleaner/availability` | Cleaner | Update availability |
-| `GET` | `/services/cleaner/assignments?status=assigned&limit=50&offset=0` | Cleaner | List own assignments |
-| `GET` | `/services/cleaner/assignments/{assignment_id}` | Cleaner | Get own assignment |
-| `POST` | `/services/cleaner/assignments/{assignment_id}/accept` | Cleaner | Accept assigned job |
-| `POST` | `/services/cleaner/assignments/{assignment_id}/reject` | Cleaner | Reject assigned job |
-| `POST` | `/services/cleaner/assignments/{assignment_id}/start` | Cleaner | Start accepted job |
-| `POST` | `/services/cleaner/assignments/{assignment_id}/complete` | Cleaner | Complete in-progress job |
+| `GET` | `/washioo-api/services/cleaner/profile` | Cleaner | Get own cleaner profile |
+| `PATCH` | `/washioo-api/services/cleaner/availability` | Cleaner | Update availability |
+| `GET` | `/washioo-api/services/cleaner/assignments?status=assigned&limit=50&offset=0` | Cleaner | List own assignments |
+| `GET` | `/washioo-api/services/cleaner/assignments/{assignment_id}` | Cleaner | Get own assignment |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/accept` | Cleaner | Accept assigned job |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/reject` | Cleaner | Reject assigned job |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/start` | Cleaner | Start accepted job |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/complete` | Cleaner | Complete in-progress job |
 
 ### Admin
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/services/admin/service-categories` | Admin | Create service category |
-| `PATCH` | `/services/admin/service-categories/{service_id}` | Admin | Update service category |
-| `DELETE` | `/services/admin/service-categories/{service_id}` | Admin | Deactivate service category |
-| `GET` | `/services/admin/all-bookings?limit=50&offset=0` | Admin | List all bookings |
-| `GET` | `/services/admin/bookings/{booking_id}` | Admin | Get booking |
-| `PATCH` | `/services/admin/bookings/{booking_id}` | Admin | Update booking details only |
-| `GET` | `/services/admin/customers/{customer_id}/bookings?limit=50&offset=0` | Admin | Customer booking history |
-| `POST` | `/services/admin/bookings/{booking_id}/assign` | Admin | Assign/reassign booking |
-| `GET` | `/services/admin/bookings-by-status/{status}?limit=50&offset=0` | Admin | List bookings by status |
-| `POST` | `/services/admin/cleaners` | Admin | Create cleaner profile |
-| `GET` | `/services/admin/cleaners?approval_status=pending&availability_status=offline&limit=50&offset=0` | Admin | List cleaners |
-| `GET` | `/services/admin/cleaners/{cleaner_id}` | Admin | Get cleaner profile |
-| `PATCH` | `/services/admin/cleaners/{cleaner_id}` | Admin | Update cleaner profile/approval |
-| `DELETE` | `/services/admin/cleaners/{cleaner_id}` | Admin | Delete cleaner profile |
-| `GET` | `/services/admin/assignments?status=assigned&limit=50&offset=0` | Admin | List all assignments |
+| `POST` | `/washioo-api/services/admin/service-categories` | Admin | Create service category |
+| `PATCH` | `/washioo-api/services/admin/service-categories/{service_id}` | Admin | Update service category |
+| `DELETE` | `/washioo-api/services/admin/service-categories/{service_id}` | Admin | Deactivate service category |
+| `GET` | `/washioo-api/services/admin/all-bookings?limit=50&offset=0` | Admin | List all bookings |
+| `GET` | `/washioo-api/services/admin/bookings/{booking_id}` | Admin | Get booking |
+| `PATCH` | `/washioo-api/services/admin/bookings/{booking_id}` | Admin | Update booking details only |
+| `GET` | `/washioo-api/services/admin/customers/{customer_id}/bookings?limit=50&offset=0` | Admin | Customer booking history |
+| `POST` | `/washioo-api/services/admin/bookings/{booking_id}/assign` | Admin | Assign/reassign booking |
+| `GET` | `/washioo-api/services/admin/bookings-by-status/{status}?limit=50&offset=0` | Admin | List bookings by status |
+| `POST` | `/washioo-api/services/admin/cleaners` | Admin | Create cleaner profile |
+| `GET` | `/washioo-api/services/admin/cleaners?approval_status=pending&availability_status=offline&limit=50&offset=0` | Admin | List cleaners |
+| `GET` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Admin | Get cleaner profile |
+| `PATCH` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Admin | Update cleaner profile/approval |
+| `DELETE` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Admin | Delete cleaner profile |
+| `GET` | `/washioo-api/services/admin/assignments?status=assigned&limit=50&offset=0` | Admin | List all assignments |
+
+### Payment
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `PATCH` | `/washioo-api/bookings/{booking_id}/payment/collect` | Cleaner | Record collection after completion |
+| `PATCH` | `/washioo-api/admin/payments/{payment_id}/split` | Admin | Split collected payment into cleaner/admin shares |
+| `PATCH` | `/washioo-api/admin/payments/{payment_id}/handover/collect` | Admin | Mark cleaner handover as settled |
+| `GET` | `/washioo-api/admin/payments?status=collected&cleaner_handover_status=pending&limit=50&offset=0` | Admin | List payment collection records |
+| `GET` | `/washioo-api/cleaner/earnings` | Cleaner | View cleaner earnings and admin due |
+| `GET` | `/washioo-api/customer/bookings/{booking_id}/payment-status` | Customer | View own booking payment status |
+| `GET` | `/washioo-api/payments/stats` | Admin | Payment statistics |
+| `GET` | `/washioo-api/payments/?status=pending&limit=50&offset=0` | Admin | Legacy/admin payment list |
+| `GET` | `/washioo-api/payments/customer/{customer_id}?limit=50&offset=0` | Admin | Customer payments |
+| `GET` | `/washioo-api/payments/booking/{booking_id}` | Admin | Booking payment |
+| `GET` | `/washioo-api/payments/{payment_id}` | Admin | Payment details |
+| `PUT` | `/washioo-api/payments/{payment_id}` | Admin | Manual payment update |
+| `POST` | `/washioo-api/payments/{payment_id}/mark-paid` | Admin | Mark paid |
+| `POST` | `/washioo-api/payments/{payment_id}/mark-failed` | Admin | Mark failed |
+| `DELETE` | `/washioo-api/payments/{payment_id}` | Admin | Delete pending payment |
+
+### Rating
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/washioo-api/bookings/{booking_id}/ratings` | Customer or Cleaner | Submit bidirectional booking rating |
+| `GET` | `/washioo-api/bookings/{booking_id}/ratings` | Authenticated booking member or Admin | View booking ratings |
+| `GET` | `/washioo-api/cleaners/{cleaner_id}/ratings` | Admin or Customer | Cleaner rating summary |
+| `GET` | `/washioo-api/customers/{customer_id}/ratings` | Admin or Cleaner | Customer rating summary |
+| `GET` | `/washioo-api/admin/ratings?reviewer_role=customer&page=1&limit=50` | Admin | List/filter ratings |
 
 ## Auth Flows
 
@@ -461,7 +501,7 @@ Never show full identity numbers. Only masked values are returned.
 1. Frontend calls:
 
 ```http
-POST /auth/customer/send-otp
+POST /washioo-api/auth/customer/send-otp
 ```
 
 Request:
@@ -483,7 +523,7 @@ Response:
 2. Frontend collects OTP and calls:
 
 ```http
-POST /auth/customer/signup
+POST /washioo-api/auth/customer/signup
 ```
 
 Request:
@@ -513,7 +553,7 @@ Response:
 ### Customer Signin
 
 ```http
-POST /auth/customer/signin
+POST /washioo-api/auth/customer/signin
 ```
 
 Request:
@@ -532,13 +572,13 @@ Cleaner signup requires Aadhaar.
 1. Send OTP:
 
 ```http
-POST /auth/cleaner/send-otp
+POST /washioo-api/auth/cleaner/send-otp
 ```
 
 2. Signup:
 
 ```http
-POST /auth/cleaner/signup
+POST /washioo-api/auth/cleaner/signup
 ```
 
 Request:
@@ -582,11 +622,11 @@ There is no public admin signup.
 First admin is created by backend/database migration. Then:
 
 ```http
-POST /auth/admin/send-otp
+POST /washioo-api/auth/admin/send-otp
 ```
 
 ```http
-POST /auth/admin/signin
+POST /washioo-api/auth/admin/signin
 ```
 
 Request:
@@ -603,7 +643,7 @@ Request:
 ### Refresh Token
 
 ```http
-POST /auth/refresh-token
+POST /washioo-api/auth/refresh-token
 ```
 
 Request:
@@ -632,7 +672,7 @@ Frontend rule:
 ### Logout
 
 ```http
-POST /auth/logout
+POST /washioo-api/auth/logout
 ```
 
 Headers:
@@ -654,7 +694,7 @@ Request:
 ### Create Address
 
 ```http
-POST /services/address
+POST /washioo-api/services/address
 ```
 
 Request:
@@ -680,7 +720,7 @@ If `is_default=true`, backend makes other addresses non-default.
 ### Create Booking
 
 ```http
-POST /services/book
+POST /washioo-api/services/book
 ```
 
 Request:
@@ -748,7 +788,7 @@ availability_status = offline
 Admin approves cleaner:
 
 ```http
-PATCH /services/admin/cleaners/{cleaner_id}
+PATCH /washioo-api/services/admin/cleaners/{cleaner_id}
 ```
 
 Request:
@@ -762,7 +802,7 @@ Request:
 ### Cleaner Availability
 
 ```http
-PATCH /services/cleaner/availability
+PATCH /washioo-api/services/cleaner/availability
 ```
 
 Request:
@@ -783,25 +823,25 @@ Rules:
 Cleaner list:
 
 ```http
-GET /services/cleaner/assignments?status=assigned&limit=50&offset=0
+GET /washioo-api/services/cleaner/assignments?status=assigned&limit=50&offset=0
 ```
 
 Accept:
 
 ```http
-POST /services/cleaner/assignments/{assignment_id}/accept
+POST /washioo-api/services/cleaner/assignments/{assignment_id}/accept
 ```
 
 Start:
 
 ```http
-POST /services/cleaner/assignments/{assignment_id}/start
+POST /washioo-api/services/cleaner/assignments/{assignment_id}/start
 ```
 
 Complete:
 
 ```http
-POST /services/cleaner/assignments/{assignment_id}/complete
+POST /washioo-api/services/cleaner/assignments/{assignment_id}/complete
 ```
 
 Complete request:
@@ -816,7 +856,7 @@ Complete request:
 Reject:
 
 ```http
-POST /services/cleaner/assignments/{assignment_id}/reject
+POST /washioo-api/services/cleaner/assignments/{assignment_id}/reject
 ```
 
 ## Admin Flows
@@ -824,7 +864,7 @@ POST /services/cleaner/assignments/{assignment_id}/reject
 ### Create Another Admin
 
 ```http
-POST /auth/admin/create
+POST /washioo-api/auth/admin/create
 ```
 
 Request:
@@ -840,7 +880,7 @@ Request:
 ### Update Admin Account
 
 ```http
-PATCH /auth/admin/{admin_id}
+PATCH /washioo-api/auth/admin/{admin_id}
 ```
 
 Request:
@@ -858,7 +898,7 @@ Request:
 Create:
 
 ```http
-POST /services/admin/service-categories
+POST /washioo-api/services/admin/service-categories
 ```
 
 Request:
@@ -876,13 +916,13 @@ Request:
 Update:
 
 ```http
-PATCH /services/admin/service-categories/{service_id}
+PATCH /washioo-api/services/admin/service-categories/{service_id}
 ```
 
 Deactivate:
 
 ```http
-DELETE /services/admin/service-categories/{service_id}
+DELETE /washioo-api/services/admin/service-categories/{service_id}
 ```
 
 ### Manage Cleaner Profiles
@@ -890,13 +930,13 @@ DELETE /services/admin/service-categories/{service_id}
 List pending cleaners:
 
 ```http
-GET /services/admin/cleaners?approval_status=pending&limit=50&offset=0
+GET /washioo-api/services/admin/cleaners?approval_status=pending&limit=50&offset=0
 ```
 
 Approve cleaner:
 
 ```http
-PATCH /services/admin/cleaners/{cleaner_id}
+PATCH /washioo-api/services/admin/cleaners/{cleaner_id}
 ```
 
 Request:
@@ -912,7 +952,7 @@ Request:
 Admin create cleaner profile manually:
 
 ```http
-POST /services/admin/cleaners
+POST /washioo-api/services/admin/cleaners
 ```
 
 Request:
@@ -934,25 +974,25 @@ Request:
 List all:
 
 ```http
-GET /services/admin/all-bookings?limit=50&offset=0
+GET /washioo-api/services/admin/all-bookings?limit=50&offset=0
 ```
 
 Filter by status:
 
 ```http
-GET /services/admin/bookings-by-status/pending?limit=50&offset=0
+GET /washioo-api/services/admin/bookings-by-status/pending?limit=50&offset=0
 ```
 
 Get one:
 
 ```http
-GET /services/admin/bookings/{booking_id}
+GET /washioo-api/services/admin/bookings/{booking_id}
 ```
 
 Patch booking details:
 
 ```http
-PATCH /services/admin/bookings/{booking_id}
+PATCH /washioo-api/services/admin/bookings/{booking_id}
 ```
 
 Important:
@@ -964,7 +1004,7 @@ Important:
 Assign booking:
 
 ```http
-POST /services/admin/bookings/{booking_id}/assign
+POST /washioo-api/services/admin/bookings/{booking_id}/assign
 ```
 
 Request:
@@ -1016,9 +1056,9 @@ Frontend UI rules:
 | `completed` | view only | view | view |
 | `cancelled` | view only | view | view |
 
-## Setup / Flyway Notes
+## Setup / Migration Notes
 
-Flyway migrations are in:
+Versioned SQL migrations are in:
 
 ```txt
 db/migration
@@ -1031,7 +1071,22 @@ V1__init_schema.sql
 V2__create_initial_admin.sql
 V3__add_cleaner_identity_fields.sql
 V4__add_production_constraints.sql
+V5__booking_details_and_location_verification.sql
+V6__payment_collection_and_cleaner_earnings.sql
+V7__add_payment_payout_released.sql
+V8__add_cleaner_handover_status.sql
+V9__add_bidirectional_ratings.sql
+V10__deployment_indexes.sql
 ```
+
+Alembic is scaffolded for future migration generation:
+
+```txt
+alembic.ini
+alembic/env.py
+```
+
+`alembic/env.py` reads `DATABASE_URL` from environment config and imports all model modules so ORM metadata includes every mapped table.
 
 Admin seed placeholders:
 
@@ -1041,7 +1096,15 @@ flyway.placeholders.admin_phone_number=+919876543210
 flyway.placeholders.admin_email=admin@example.com
 ```
 
-Root `database.sql` is kept for Docker/Postgres direct initialization. Flyway should use the versioned files under `db/migration`.
+Root `database.sql` is kept for Docker/Postgres direct initialization. Production/staging schema changes should use the versioned files under `db/migration` or a formal Alembic revision flow, not ad hoc SQL.
+
+## Deployment Notes
+
+- Docker healthcheck calls `/washioo-api/health`.
+- The Docker image runs as a non-root `app` user.
+- `.dockerignore` excludes `.env`, `.venv`, pycache, Git metadata, and local sample files from the image context.
+- `docker-compose.yml` injects database credentials through `.env` variables and builds `DATABASE_URL` for the app container.
+- Required production env values are documented in `.env.example`, including `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL`, `SECRET_KEY`, strict `CORS_ORIGINS`, and DB pool settings.
 
 ## Frontend Implementation Checklist
 
@@ -1051,12 +1114,12 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Flyway sh
 - Store `access_token` and `refresh_token`.
 - On `401`, call refresh once and retry the failed request.
 - On refresh success, replace both tokens.
-- On logout, call `/auth/logout` with refresh token.
+- On logout, call `/washioo-api/auth/logout` with refresh token.
 
 ### Customer UI
 
-- Show service categories from `/services/`.
-- Manage addresses with `/services/address*`.
+- Show service categories from `/washioo-api/services/`.
+- Manage addresses with `/washioo-api/services/address*`.
 - Booking create requires service, schedule, and address/default address.
 - Allow edit/cancel only for `pending` bookings.
 
@@ -1071,7 +1134,7 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Flyway sh
 ### Admin UI
 
 - Use admin signin only.
-- Add/update admins through `/auth/admin/create` and `/auth/admin/{admin_id}`.
+- Add/update admins through `/washioo-api/auth/admin/create` and `/washioo-api/auth/admin/{admin_id}`.
 - Approve cleaners from pending list.
 - Assign pending bookings to approved available cleaners.
 - Do not send `booking_status` in admin booking patch requests.

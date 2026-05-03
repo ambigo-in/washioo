@@ -12,6 +12,7 @@ class Booking(Base):
     customer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     service_category_id = Column(UUID(as_uuid=True), ForeignKey("service_categories.id", ondelete="RESTRICT"), nullable=False)
     address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.id", ondelete="RESTRICT"), nullable=False)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("customer_vehicles.id", ondelete="SET NULL"))
     scheduled_date = Column(Date)
     scheduled_time = Column(Time)
     special_instructions = Column(Text)
@@ -27,6 +28,7 @@ class Booking(Base):
     customer = relationship("User", foreign_keys=[customer_id])
     service_category = relationship("ServiceCategory", back_populates="bookings")
     address = relationship("Address")
+    vehicle = relationship("CustomerVehicle", back_populates="bookings")
     assignment = relationship("BookingAssignment", back_populates="booking", uselist=False, cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="booking", uselist=False, cascade="all, delete-orphan")
 
@@ -40,5 +42,6 @@ class Booking(Base):
         Index("idx_bookings_date", "scheduled_date"),
         Index("idx_bookings_service_category", "service_category_id"),
         Index("idx_bookings_address", "address_id"),
+        Index("idx_bookings_vehicle", "vehicle_id"),
     )
 

@@ -19,6 +19,7 @@ def get_booking_by_id(db, booking_id):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
+            joinedload(Booking.vehicle),
             joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
@@ -37,6 +38,7 @@ def get_customer_bookings(db, customer_id, limit=50, offset=0):
         .options(
             joinedload(Booking.service_category),
             joinedload(Booking.address),
+            joinedload(Booking.vehicle),
             joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
@@ -55,6 +57,7 @@ def get_all_bookings(db, limit=50, offset=0):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
+            joinedload(Booking.vehicle),
             joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
@@ -72,6 +75,7 @@ def get_bookings_by_status(db, status, limit=50, offset=0):
             joinedload(Booking.customer),
             joinedload(Booking.service_category),
             joinedload(Booking.address),
+            joinedload(Booking.vehicle),
             joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
@@ -89,6 +93,7 @@ def get_customer_booking_by_id(db, customer_id, booking_id):
         .options(
             joinedload(Booking.service_category),
             joinedload(Booking.address),
+            joinedload(Booking.vehicle),
             joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
             joinedload(Booking.payment)
         )
