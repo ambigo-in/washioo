@@ -6,7 +6,7 @@ from repositories.role_repository import get_role_by_name, assign_role_to_user, 
 from repositories.cleaner_repository import create_cleaner_profile, get_cleaner_profile_by_user_id
 from services.otp_service import verify_otp_code
 from core.config import settings
-from core.security import hash_identifier, mask_identifier
+from core.security import hash_identifier
 
 def _get_role_or_raise(db, role_name: str):
     role = get_role_by_name(db, role_name)
@@ -44,12 +44,12 @@ def _cleaner_profile_data_from_signup(payload):
         raise Exception("Aadhaar number is required for cleaner signup")
 
     data = {
-        "aadhaar_number": mask_identifier(payload.aadhaar_number),
+        "aadhaar_number": payload.aadhaar_number,
         "aadhaar_number_hash": hash_identifier(payload.aadhaar_number),
-        "government_id_number": mask_identifier(payload.aadhaar_number),
+        "government_id_number": payload.aadhaar_number,
     }
     if payload.driving_license_number is not None:
-        data["driving_license_number"] = mask_identifier(payload.driving_license_number)
+        data["driving_license_number"] = payload.driving_license_number
         data["driving_license_number_hash"] = hash_identifier(payload.driving_license_number)
     return data
 

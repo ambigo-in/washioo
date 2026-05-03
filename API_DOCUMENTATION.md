@@ -562,6 +562,9 @@ Returned when a customer creates a new booking.
   "vehicle_type": "string",
   "aadhaar_number_masked": "********9012",
   "driving_license_number_masked": "******7890",
+  "aadhaar_number": "123456789012",
+  "driving_license_number": "DL1234567890",
+  "identity_data_status": "full_available | masked_legacy_data",
   "has_aadhaar": true,
   "has_driving_license": true,
   "service_radius_km": 0,
@@ -657,6 +660,17 @@ Content-Type: application/json
 }
 ```
 
+`aadhaar_number`, `driving_license_number`, and `identity_data_status` are returned only by admin cleaner management APIs:
+
+```txt
+POST /washioo-api/services/admin/cleaners
+GET /washioo-api/services/admin/cleaners
+GET /washioo-api/services/admin/cleaners/{cleaner_id}
+PATCH /washioo-api/services/admin/cleaners/{cleaner_id}
+```
+
+Cleaner-facing auth/profile responses return only the masked fields.
+
 ```json
 {
   "message": "Customer OTP sent successfully"
@@ -714,7 +728,9 @@ Cleaner signup stores required Aadhaar and optional driving license details on `
 db/migration/V3__add_cleaner_identity_fields.sql
 ```
 
-The API stores masked identity numbers plus deterministic hashes for uniqueness checks. Full Aadhaar and driving license values are not returned by normal API responses.
+The API stores full identity numbers plus deterministic hashes for uniqueness checks. Admin cleaner management APIs return full Aadhaar and driving license values for approval verification. Cleaner-facing responses and nested cleaner responses return masked values only.
+
+Existing cleaner records created before this change may contain only masked values. Those admin responses include `identity_data_status = masked_legacy_data`; ask the cleaner to resubmit/update identity details before approval if full verification is required.
 
 ## User APIs
 

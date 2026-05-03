@@ -509,7 +509,7 @@ def create_cleaner_profile_admin(
         cleaner = create_cleaner_profile_service(db, payload)
         return {
             "message": "Cleaner profile created successfully",
-            "cleaner": format_cleaner_profile(cleaner)
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -527,7 +527,10 @@ def list_cleaners_admin(
     """Admin list cleaner profiles"""
     try:
         cleaners = list_cleaner_profiles_service(db, approval_status, availability_status, limit, offset)
-        cleaner_list = [format_cleaner_profile(cleaner) for cleaner in cleaners]
+        cleaner_list = [
+            format_cleaner_profile(cleaner, include_sensitive_identity=True)
+            for cleaner in cleaners
+        ]
         return {
             "message": "Cleaners fetched successfully",
             "cleaners": cleaner_list,
@@ -548,7 +551,7 @@ def get_cleaner_admin(
         cleaner = get_cleaner_profile_service(db, cleaner_id)
         return {
             "message": "Cleaner fetched successfully",
-            "cleaner": format_cleaner_profile(cleaner)
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
         }
     except Exception as e:
         raise HTTPException(status_code=404, detail="Request could not be processed")
@@ -566,7 +569,7 @@ def update_cleaner_admin(
         cleaner = update_cleaner_profile_service(db, cleaner_id, payload)
         return {
             "message": "Cleaner updated successfully",
-            "cleaner": format_cleaner_profile(cleaner)
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -755,5 +758,4 @@ def complete_assignment(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
-
 

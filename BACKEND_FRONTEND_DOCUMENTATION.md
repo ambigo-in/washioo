@@ -13,7 +13,7 @@ It reflects the latest production-oriented backend changes:
 - First admin is created by Flyway SQL migration.
 - Existing admins can create or update other admins through protected APIs.
 - Cleaner signup requires Aadhaar number and optionally accepts driving license number.
-- Aadhaar and driving license are never returned in full; responses contain masked values and boolean flags.
+- Aadhaar and driving license are returned in full only on admin cleaner management APIs for approval verification; all other responses use masked values and boolean flags.
 - Booking status changes are controlled by lifecycle APIs, not arbitrary admin status patches.
 - Major list APIs support pagination with `limit` and `offset`.
 - Production responses avoid leaking raw exception strings; unexpected errors return generic messages.
@@ -150,7 +150,7 @@ Cleaner signup optionally accepts:
 
 - `driving_license_number`
 
-Frontend must not expect full Aadhaar or license values in responses. The API returns masked values only.
+Frontend must expect full Aadhaar/license values only on admin cleaner management responses. Cleaner-facing responses return masked values only.
 
 ## Common Formats
 
@@ -349,6 +349,9 @@ car
   "vehicle_type": "bike",
   "aadhaar_number_masked": "********9012",
   "driving_license_number_masked": "******7890",
+  "aadhaar_number": "123456789012",
+  "driving_license_number": "DL1234567890",
+  "identity_data_status": "full_available",
   "has_aadhaar": true,
   "has_driving_license": true,
   "service_radius_km": 10.0,
@@ -360,7 +363,16 @@ car
 }
 ```
 
-Never show full identity numbers. Only masked values are returned.
+Full identity fields are included only on these admin APIs:
+
+```txt
+POST /washioo-api/services/admin/cleaners
+GET /washioo-api/services/admin/cleaners
+GET /washioo-api/services/admin/cleaners/{cleaner_id}
+PATCH /washioo-api/services/admin/cleaners/{cleaner_id}
+```
+
+Cleaner-facing auth/profile responses and nested cleaner objects return only masked values. If `identity_data_status` is `masked_legacy_data`, the record was created before full values were stored and the admin should ask the cleaner to resubmit identity details before approval.
 
 ### Customer Booking
 
@@ -1301,8 +1313,8 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 
 ### PII
 
-- Never ask backend for full Aadhaar/license values after signup.
-- Display only returned masked values.
+- Admin approval screens may display full Aadhaar/license values returned by admin cleaner management APIs.
+- Cleaner-facing screens must display only returned masked values.
 - Treat identity fields as sensitive client-side inputs.
 
 

@@ -616,18 +616,30 @@ def format_address(address):
         "is_default": address.is_default,
     }
 
-def format_cleaner_profile(cleaner):
+def _identity_is_masked(value):
+    return isinstance(value, str) and "*" in value
+
+
+def _masked_identity(value):
+    if not value:
+        return None
+    if _identity_is_masked(value):
+        return value
+    return mask_identifier(value)
+
+
+def format_cleaner_profile(cleaner, include_sensitive_identity=False):
     if not cleaner:
         return None
-    return {
+    profile = {
         "id": str(cleaner.id),
         "user_id": str(cleaner.user_id),
         "full_name": cleaner.user.full_name if cleaner.user else None,
         "phone": cleaner.user.phone if cleaner.user else None,
         "email": cleaner.user.email if cleaner.user else None,
         "vehicle_type": cleaner.vehicle_type,
-        "aadhaar_number_masked": cleaner.aadhaar_number,
-        "driving_license_number_masked": cleaner.driving_license_number,
+        "aadhaar_number_masked": _masked_identity(cleaner.aadhaar_number),
+        "driving_license_number_masked": _masked_identity(cleaner.driving_license_number),
         "has_aadhaar": bool(cleaner.aadhaar_number_hash or cleaner.aadhaar_number),
         "has_driving_license": bool(cleaner.driving_license_number_hash or cleaner.driving_license_number),
         "service_radius_km": float(cleaner.service_radius_km) if cleaner.service_radius_km is not None else None,
@@ -639,19 +651,28 @@ def format_cleaner_profile(cleaner):
         "total_jobs_completed": cleaner.total_jobs_completed or 0,
         "created_at": cleaner.created_at.isoformat() if cleaner.created_at else None,
     }
+    if include_sensitive_identity:
+        profile.update({
+            "aadhaar_number": cleaner.aadhaar_number,
+            "driving_license_number": cleaner.driving_license_number,
+            "identity_data_status": (
+                "masked_legacy_data"
+                if _identity_is_masked(cleaner.aadhaar_number) or _identity_is_masked(cleaner.driving_license_number)
+                else "full_available"
+            ),
+        })
+    return profile
 
 
 def _cleaner_identity_data(cleaner_data, partial=False):
     if "aadhaar_number" in cleaner_data:
         cleaner_data["aadhaar_number_hash"] = hash_identifier(cleaner_data["aadhaar_number"])
-        cleaner_data["aadhaar_number"] = mask_identifier(cleaner_data["aadhaar_number"])
         cleaner_data["government_id_number"] = cleaner_data["aadhaar_number"]
     elif not partial:
         raise Exception("Aadhaar number is required")
 
     if cleaner_data.get("driving_license_number"):
         cleaner_data["driving_license_number_hash"] = hash_identifier(cleaner_data["driving_license_number"])
-        cleaner_data["driving_license_number"] = mask_identifier(cleaner_data["driving_license_number"])
 
     return cleaner_data
 
