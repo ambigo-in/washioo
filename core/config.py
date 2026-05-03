@@ -23,9 +23,13 @@ class Settings:
     AUTH_RATE_LIMIT = os.getenv("AUTH_RATE_LIMIT", "5/15 minutes")
     REFRESH_RATE_LIMIT = os.getenv("REFRESH_RATE_LIMIT", "20/hour")
 
-    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-    TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID")
+    OTP_LENGTH = int(os.getenv("OTP_LENGTH", 6))
+    OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", 5))
+    OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", 5))
+
+    SMS_COUNTRY_KEY = os.getenv("SMS_COUNTRY_KEY")
+    SMS_COUNTRY_TOKEN = os.getenv("SMS_COUNTRY_TOKEN")
+    SMS_HEADER = os.getenv("SMS_HEADER", "AMBHPL")
 
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
     CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"]'))
@@ -46,10 +50,23 @@ class Settings:
             raise RuntimeError("SECRET_KEY cannot use the production placeholder value")
         if self.ENVIRONMENT == "production" and self.CORS_CREDENTIALS and "*" in self.CORS_ORIGINS:
             raise RuntimeError("CORS_ORIGINS cannot contain '*' when credentials are enabled")
+        if self.ENVIRONMENT == "production":
+            sms_missing = [
+                name for name in ["SMS_COUNTRY_KEY", "SMS_COUNTRY_TOKEN"]
+                if not getattr(self, name)
+            ]
+            if sms_missing:
+                raise RuntimeError(f"Missing required SMS settings: {', '.join(sms_missing)}")
         if self.DATABASE_POOL_SIZE < 1:
             raise RuntimeError("DATABASE_POOL_SIZE must be at least 1")
         if self.DATABASE_MAX_OVERFLOW < 0:
             raise RuntimeError("DATABASE_MAX_OVERFLOW cannot be negative")
+        if self.OTP_LENGTH < 4:
+            raise RuntimeError("OTP_LENGTH must be at least 4")
+        if self.OTP_EXPIRY_MINUTES < 1:
+            raise RuntimeError("OTP_EXPIRY_MINUTES must be at least 1")
+        if self.OTP_MAX_ATTEMPTS < 1:
+            raise RuntimeError("OTP_MAX_ATTEMPTS must be at least 1")
 
 settings = Settings()
 settings.validate()

@@ -129,7 +129,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 curl -X POST http://localhost:8000/auth/signup \
   -H "Content-Type: application/json" \
   -d {
-    "phone_number": "+91XXXXXXXXXX",
+    "phone_number": "XXXXXXXXXX",
     "otp_code": "123456",
     "full_name": "Test User",
     "email": "test@example.com",
@@ -303,3 +303,4 @@ async function refreshAccessToken() {
 # Terminal output should show detailed error messages
 # If not, enable debug logging in main.py
 ```
+

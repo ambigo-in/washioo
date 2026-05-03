@@ -618,7 +618,7 @@
             <div class="contact-icon"><i class="fas fa-phone"></i></div>
             <div>
               <h4>Call Us</h4>
-              <p>+91 98765 43210<br>Mon–Sun, 7AM–9PM</p>
+              <p><span data-phone-display="9876543210"></span><br>Mon–Sun, 7AM–9PM</p>
             </div>
           </div>
           <div class="contact-item">
@@ -649,7 +649,7 @@
             <div class="contact-form">
               <div class="form-row">
                 <div class="form-group"><label>Your Name</label><input type="text" placeholder="Arjun Sharma"></div>
-                <div class="form-group"><label>Phone</label><input type="tel" placeholder="+91 9876543210"></div>
+                <div class="form-group"><label>Phone</label><input type="tel" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="Enter 10-digit mobile number"></div>
               </div>
               <div class="form-group"><label>Email</label><input type="email" placeholder="arjun@email.com"></div>
               <div class="form-group"><label>Message</label><textarea rows="4" placeholder="How can we help you?"></textarea></div>
@@ -903,7 +903,7 @@
           </div>
           <div class="form-group">
             <label>Contact Number</label>
-            <input type="tel" placeholder="+91 9876543210" id="contactNum">
+            <input type="tel" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="Enter 10-digit mobile number" id="contactNum">
           </div>
         </div>
         <div class="form-group">
@@ -1102,7 +1102,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Mobile Number</label>
-          <input type="tel" id="signupPhone" placeholder="+91 9876543210">
+          <input type="tel" id="signupPhone" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="Enter 10-digit mobile number">
         </div>
         <div class="form-group">
           <label>Email Address</label>
@@ -1211,22 +1211,45 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if(e.target===m) { m.classList.add('hidden'); document.body.style.overflow=''; } });
 });
 
+const indianMobileRegex = /^[6-9]\d{9}$/;
+const formatPhone = p => `+91 ${p.slice(0,5)} ${p.slice(5)}`;
+const phoneErrorMessage = 'Enter a valid 10-digit mobile number';
+
+function normalizePhoneInput(el) {
+  el.value = el.value.replace(/\D/g, '').slice(0, 10);
+}
+
+function isValidPhone(phone) {
+  return indianMobileRegex.test(phone.trim());
+}
+
+document.querySelectorAll('input[type="tel"]').forEach(input => {
+  input.addEventListener('input', () => normalizePhoneInput(input));
+});
+
+document.querySelectorAll('[data-phone-display]').forEach(el => {
+  el.textContent = formatPhone(el.dataset.phoneDisplay);
+});
+
 // ── AUTH ──────────────────────────────
 function handleSignIn() {
   const email = document.getElementById('signinEmail').value;
   const pass = document.getElementById('signinPass').value;
   if(!email || !pass) { showToast('⚠️ Please fill all fields'); return; }
+  if(!email.includes('@') && !isValidPhone(email)) { showToast(phoneErrorMessage); return; }
   currentUser = { name: email.includes('@') ? email.split('@')[0] : 'User', email: email.includes('@') ? email : email + '@phone.in' };
   closeModal('signin');
   enterDashboard();
 }
 function handleSignUp() {
   const name = document.getElementById('signupName').value;
+  const phone = document.getElementById('signupPhone').value;
   const email = document.getElementById('signupEmail').value;
   const pass = document.getElementById('signupPass').value;
   const passConf = document.getElementById('signupPassConf').value;
   const tos = document.getElementById('tos').checked;
   if(!name || !email || !pass) { showToast('⚠️ Please fill all required fields'); return; }
+  if(!isValidPhone(phone)) { showToast(phoneErrorMessage); return; }
   if(pass !== passConf) { showToast('⚠️ Passwords do not match'); return; }
   if(!tos) { showToast('⚠️ Please accept the Terms of Service'); return; }
   currentUser = { name, email };
@@ -1450,3 +1473,4 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
+

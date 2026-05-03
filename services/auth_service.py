@@ -4,7 +4,7 @@ from repositories.token_repository import save_refresh_token
 from core.security import create_access_token, create_refresh_token
 from repositories.role_repository import get_role_by_name, assign_role_to_user, user_has_role
 from repositories.cleaner_repository import create_cleaner_profile, get_cleaner_profile_by_user_id
-from utils.twilio_helper import verify_otp
+from services.otp_service import verify_otp_code
 from core.config import settings
 from core.security import hash_identifier, mask_identifier
 
@@ -34,9 +34,8 @@ def _create_tokens(db, user, role_name: str | None = None):
     return access_token, refresh_token
 
 
-def _verify_signup_otp(payload):
-    verification = verify_otp(payload.phone_number, payload.otp_code)
-    if verification.status != "approved":
+def _verify_signup_otp(db, payload):
+    if not verify_otp_code(db, payload.phone_number, payload.otp_code):
         raise Exception("Invalid OTP")
 
 
@@ -56,7 +55,7 @@ def _cleaner_profile_data_from_signup(payload):
 
 
 def signup_user_for_role(db, payload, role_name: str, cleaner_profile_data: dict | None = None):
-    _verify_signup_otp(payload)
+    _verify_signup_otp(db, payload)
     role = _get_role_or_raise(db, role_name)
 
     # Check if user already exists by phone
@@ -109,8 +108,7 @@ def signin_user_for_role(db, payload, role_name: str):
     if not user_has_role(db, user.id, role_name):
         raise Exception(f"This account is not registered as a {role_name}")
 
-    verification = verify_otp(payload.phone_number, payload.otp_code)
-    if verification.status != "approved":
+    if not verify_otp_code(db, payload.phone_number, payload.otp_code):
         raise Exception("Invalid OTP")
 
     return _create_tokens(db, user, role_name)

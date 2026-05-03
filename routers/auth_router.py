@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from schemas.auth_schema import (
@@ -32,7 +34,7 @@ from services.booking_service import (
     format_assignment,
     format_cleaner_profile,
 )
-from utils.twilio_helper import send_otp  
+from services.otp_service import create_and_send_otp
 from core.role_dependencies import require_roles
 
 
@@ -43,6 +45,7 @@ CUSTOMER_TAG = "Customer APIs"
 PROFILE_TAG = "Profile APIs"
 
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth")
 
 
@@ -62,8 +65,24 @@ def _token_response(message: str, access: str, refresh: str, account_type: str |
     return response
 
 
-def _send_role_otp(db: Session, phone_number: str, role_name: str):
-    send_otp(phone_number)
+def _raise_auth_error(exc: Exception, status_code: int = 400):
+    logger.warning("Auth request failed: %s", exc)
+    detail = str(exc) if settings.DEBUG else "Request could not be processed"
+    raise HTTPException(status_code=status_code, detail=detail)
+
+
+async def _send_role_otp(request: Request, db: Session, phone_number: str, role_name: str):
+    sent = await create_and_send_otp(
+        db,
+        phone_number,
+        created_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send OTP at the moment"
+        )
     return {
         "message": f"{role_name.title()} OTP sent successfully",
     }
@@ -79,8 +98,8 @@ def send_otp_api(request: Request):
 
 @router.post("/customer/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
-def send_customer_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
-    return _send_role_otp(db, payload.phone_number, "customer")
+async def send_customer_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
+    return await _send_role_otp(request, db, payload.phone_number, "customer")
 
 
 @router.post("/customer/signup", tags=[AUTH_TAG])
@@ -91,7 +110,7 @@ def customer_signup(request: Request, payload: RoleSignupRequest, db: Session = 
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Customer signup successful", access, refresh, "customer", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/customer/signin", tags=[AUTH_TAG])
@@ -102,13 +121,13 @@ def customer_signin(request: Request, payload: SigninRequest, db: Session = Depe
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Customer login successful", access, refresh, "customer", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/cleaner/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
-def send_cleaner_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
-    return _send_role_otp(db, payload.phone_number, "cleaner")
+async def send_cleaner_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
+    return await _send_role_otp(request, db, payload.phone_number, "cleaner")
 
 
 @router.post("/cleaner/signup", tags=[AUTH_TAG])
@@ -127,7 +146,7 @@ def cleaner_signup(request: Request, payload: CleanerSignupRequest, db: Session 
             {"cleaner": format_cleaner_profile(cleaner)}
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/cleaner/signin", tags=[AUTH_TAG])
@@ -146,18 +165,28 @@ def cleaner_signin(request: Request, payload: SigninRequest, db: Session = Depen
             {"cleaner": format_cleaner_profile(cleaner)}
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/admin/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
-def send_admin_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
+async def send_admin_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):
     user = get_user_by_phone(db, payload.phone_number)
     if not user or not user_has_role(db, user.id, "admin"):
         return {
             "message": "If an admin account exists for this phone, an OTP has been sent"
         }
-    send_otp(payload.phone_number)
+    sent = await create_and_send_otp(
+        db,
+        payload.phone_number,
+        created_ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to send OTP at the moment"
+        )
     return {
         "message": "Admin OTP sent successfully",
     }
@@ -171,7 +200,7 @@ def admin_signin(request: Request, payload: SigninRequest, db: Session = Depends
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Admin login successful", access, refresh, "admin", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/admin/create", tags=[ADMIN_TAG])
@@ -187,7 +216,7 @@ def create_admin_account(
             "admin": get_user_profile(admin)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.patch("/admin/{admin_id}", tags=[ADMIN_TAG])
@@ -206,7 +235,7 @@ def update_admin_account(
             "admin": admin
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.post("/signup", tags=[AUTH_TAG])
@@ -236,7 +265,7 @@ def refresh_token_api(request: Request, payload: RefreshTokenRequest, db: Sessio
             "token_type": "bearer"
         }
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Request could not be processed")
+        _raise_auth_error(e, status_code=401)
 
 
 @router.post("/logout", tags=[AUTH_TAG])
@@ -247,7 +276,7 @@ def logout_api(payload: LogoutRequest, db: Session = Depends(get_db), current_us
             "message": "Logged out successfully"
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        _raise_auth_error(e)
 
 
 @router.get("/me", tags=[PROFILE_TAG])

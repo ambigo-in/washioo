@@ -17,7 +17,7 @@ Contains examples and best practices for testing all endpoints.
 
 curl -X POST http://localhost:8000/auth/send-otp \
  -H "Content-Type: application/json" \
- -d '{"phone": "+919876543210"}'
+ -d '{"phone": "9876543210"}'
 
 # Response:
 
@@ -39,7 +39,7 @@ curl -X POST http://localhost:8000/auth/signup \
  -H "Content-Type: application/json" \
  -d '{
 "full_name": "John Doe",
-"phone": "+919876543210",
+"phone": "9876543210",
 "email": "john@example.com",
 "otp": "123456",
 "role": "customer"
@@ -67,14 +67,14 @@ curl -X POST http://localhost:8000/auth/signup \
 
 curl -X POST http://localhost:8000/auth/send-otp \
  -H "Content-Type: application/json" \
- -d '{"phone": "+919876543210"}'
+ -d '{"phone": "9876543210"}'
 
 # Then use the OTP with signin endpoint
 
 curl -X POST http://localhost:8000/auth/signin \
  -H "Content-Type: application/json" \
  -d '{
-"phone": "+919876543210",
+"phone": "9876543210",
 "otp": "123456"
 }'
 
@@ -144,7 +144,7 @@ BASE_URL = "http://localhost:8000"
 def test_send_otp():
 response = requests.post(
 f"{BASE_URL}/auth/send-otp",
-json={"phone": "+919876543210"}
+json={"phone": "9876543210"}
 )
 print(f"Status: {response.status_code}")
 print(f"Response: {json.dumps(response.json(), indent=2)}")
@@ -157,7 +157,7 @@ response = requests.post(
 f"{BASE_URL}/auth/signup",
 json={
 "full_name": "John Doe",
-"phone": "+919876543210",
+"phone": "9876543210",
 "email": "john@example.com",
 "otp": "123456",
 "role": "customer"
@@ -173,7 +173,7 @@ def test_signin():
 response = requests.post(
 f"{BASE_URL}/auth/signin",
 json={
-"phone": "+919876543210",
+"phone": "9876543210",
 "otp": "123456"
 }
 )
@@ -238,7 +238,7 @@ class TestAuthentication:
         """Test sending OTP to a new user."""
         response = client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543210"}
+            json={"phone": "9876543210"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -258,7 +258,7 @@ class TestAuthentication:
         # First send OTP
         client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543211"}
+            json={"phone": "9876543211"}
         )
 
         # Then signup
@@ -266,7 +266,7 @@ class TestAuthentication:
             "/auth/signup",
             json={
                 "full_name": "Jane Doe",
-                "phone": "+919876543211",
+                "phone": "9876543211",
                 "email": "jane@example.com",
                 "otp": "123456",
                 "role": "customer"
@@ -284,7 +284,7 @@ class TestAuthentication:
             "/auth/signup",
             json={
                 "full_name": "John Doe",
-                "phone": "+919876543210",  # From previous test
+                "phone": "9876543210",  # From previous test
                 "email": "john@example.com",
                 "otp": "123456",
                 "role": "customer"
@@ -297,14 +297,14 @@ class TestAuthentication:
         # Send OTP
         client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543210"}
+            json={"phone": "9876543210"}
         )
 
         # Signin
         response = client.post(
             "/auth/signin",
             json={
-                "phone": "+919876543210",
+                "phone": "9876543210",
                 "otp": "123456"
             }
         )
@@ -317,13 +317,13 @@ class TestAuthentication:
         """Test signin with invalid OTP."""
         client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543210"}
+            json={"phone": "9876543210"}
         )
 
         response = client.post(
             "/auth/signin",
             json={
-                "phone": "+919876543210",
+                "phone": "9876543210",
                 "otp": "000000"  # Wrong OTP
             }
         )
@@ -334,14 +334,14 @@ class TestAuthentication:
         # Get initial tokens
         client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543212"}
+            json={"phone": "9876543212"}
         )
 
         signup = client.post(
             "/auth/signup",
             json={
                 "full_name": "Bob Smith",
-                "phone": "+919876543212",
+                "phone": "9876543212",
                 "email": "bob@example.com",
                 "otp": "123456",
                 "role": "cleaner"
@@ -374,14 +374,14 @@ class TestAuthentication:
         # Get token
         client.post(
             "/auth/send-otp",
-            json={"phone": "+919876543213"}
+            json={"phone": "9876543213"}
         )
 
         signup = client.post(
             "/auth/signup",
             json={
                 "full_name": "Alice Admin",
-                "phone": "+919876543213",
+                "phone": "9876543213",
                 "email": "alice@example.com",
                 "otp": "123456",
                 "role": "admin"
@@ -399,7 +399,7 @@ class TestAuthentication:
 
     def test_rate_limiting_send_otp(self):
         """Test rate limiting on send OTP."""
-        phone = "+919999999999"
+        phone = "9999999999"
 
         # Send 3 requests (should all pass)
         for i in range(3):
@@ -417,3 +417,4 @@ class TestAuthentication:
         assert response.status_code == 429
 
 # Run tests with: pytest test_auth.py -v
+

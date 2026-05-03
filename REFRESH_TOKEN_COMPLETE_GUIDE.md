@@ -205,7 +205,7 @@ CREATE INDEX idx_refresh_jti ON refresh_tokens(jti);
 curl -X POST http://localhost:8000/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "+919876543210",
+    "phone_number": "9876543210",
     "otp_code": "123456",
     "full_name": "Test User",
     "email": "test@example.com",
@@ -317,3 +317,4 @@ SELECT * FROM refresh_tokens WHERE jti = 'YOUR_JTI';
 ---
 
 **Status**: Ready for production deployment! 🚀
+

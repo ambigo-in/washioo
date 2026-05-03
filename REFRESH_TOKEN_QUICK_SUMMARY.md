@@ -139,7 +139,7 @@ Revoke old JTI, generate new tokens (token, jti)
 # 1. Signup
 curl -X POST http://localhost:8000/auth/signup \
   -H \"Content-Type: application/json\" \
-  -d '{\n    \"phone_number\": \"+919876543210\",\n    \"otp_code\": \"123456\",\n    \"full_name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"role\": \"customer\"\n  }'
+  -d '{\n    \"phone_number\": \"9876543210\",\n    \"otp_code\": \"123456\",\n    \"full_name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"role\": \"customer\"\n  }'
 
 # 2. Save tokens from response
 
@@ -155,3 +155,4 @@ curl -X POST http://localhost:8000/auth/refresh-token \
 ---
 
 **Status**: ✅ **All fixes implemented and ready to deploy**
+

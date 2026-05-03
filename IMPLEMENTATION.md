@@ -52,7 +52,7 @@ A production-grade, scalable, secure OTP-based authentication module has been su
 
 #### 6. **SMS Provider Abstraction** ✅
 
-- Twilio integration (production)
+- SMSCountry integration (production)
 - Mock SMS provider (development)
 - Factory pattern for provider selection
 - Configurable via environment
@@ -153,7 +153,7 @@ washioo/
     │   └── Rate limit checks
     └── sms_provider.py         # SMS integration
         ├── SMSProvider (ABC)
-        ├── TwilioSMSProvider
+        ├── SMSCountrySMSProvider
         ├── MockSMSProvider
         └── SMSProviderFactory
 ```
@@ -264,7 +264,7 @@ washioo/
 
 - **PyJWT** - JWT token handling
 - **Passlib** - Password hashing
-- **Twilio** - SMS provider
+- **SMSCountry** - SMS provider
 
 ### Validation & Configuration
 
@@ -302,7 +302,7 @@ passlib==1.7.4
 bcrypt==4.1.1
 python-multipart==0.0.6
 slowapi==0.1.9
-twilio==8.10.0
+httpx==0.27.0
 email-validator==2.1.0
 phonenumbers==8.13.0
 ```
@@ -321,7 +321,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env with your Twilio credentials and secret key
+# Edit .env with your SMSCountry credentials and secret key
 ```
 
 ### 3. Setup Database
@@ -463,7 +463,7 @@ Before deploying to production:
 - [ ] Set ENVIRONMENT=production
 - [ ] Generate strong SECRET_KEY
 - [ ] Configure DATABASE_URL for production
-- [ ] Setup Twilio credentials
+- [ ] Setup SMSCountry credentials
 - [ ] Configure CORS_ORIGINS whitelist
 - [ ] Enable HTTPS/SSL
 - [ ] Setup Redis for rate limiting
@@ -549,3 +549,4 @@ A complete, production-ready FastAPI authentication system has been successfully
 The system is ready to integrate with your frontend application and can be deployed to production immediately.
 
 **Happy coding! 🚀**
+

@@ -8,7 +8,7 @@ A complete step-by-step guide to set up and run the authentication system.
 - PostgreSQL 12+ (or use Docker)
 - pip (Python package manager)
 - Git
-- Twilio Account (for SMS)
+- SMSCountry Account (for SMS)
 
 ## Step 1: Initial Setup
 
@@ -130,14 +130,14 @@ Add to .env:
 SECRET_KEY=<generated-key-here>
 ```
 
-#### 3. Twilio Configuration
+#### 3. SMSCountry Configuration
 
-Get from [Twilio Console](https://www.twilio.com/console):
+Get from [SMSCountry Console](https://www.smscountry.com/console):
 
 ```env
-TWILIO_ACCOUNT_SID=AC... (your Account SID)
-TWILIO_AUTH_TOKEN=... (your Auth Token)
-TWILIO_PHONE_NUMBER=+1234567890 (your Twilio number)
+SMS_COUNTRY_KEY=your_smscountry_account_key
+SMS_COUNTRY_TOKEN=your_smscountry_auth_token
+SMS_HEADER=AMBHPL
 ```
 
 #### 4. Optional: Development Settings
@@ -173,10 +173,10 @@ OTP_LENGTH=6
 OTP_EXPIRY_MINUTES=5
 OTP_MAX_ATTEMPTS=5
 
-# Twilio
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_PHONE_NUMBER=+1234567890
+# SMSCountry
+SMS_COUNTRY_KEY=your_smscountry_account_key
+SMS_COUNTRY_TOKEN=your_smscountry_auth_token
+SMS_HEADER=AMBHPL
 
 # CORS
 CORS_ORIGINS=["http://localhost:3000", "http://localhost:8000"]
@@ -255,7 +255,7 @@ Visit: http://localhost:8000/docs
 ```bash
 curl -X POST http://localhost:8000/auth/send-otp \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+919876543210"}'
+  -d '{"phone": "9876543210"}'
 ```
 
 Expected response:
@@ -276,7 +276,7 @@ curl -X POST http://localhost:8000/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "full_name": "John Doe",
-    "phone": "+919876543210",
+    "phone": "9876543210",
     "email": "john@example.com",
     "otp": "123456",
     "role": "customer"
@@ -300,13 +300,13 @@ Expected response:
 # First, get OTP again
 curl -X POST http://localhost:8000/auth/send-otp \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+919876543210"}'
+  -d '{"phone": "9876543210"}'
 
 # Then signin
 curl -X POST http://localhost:8000/auth/signin \
   -H "Content-Type: application/json" \
   -d '{
-    "phone": "+919876543210",
+    "phone": "9876543210",
     "otp": "123456"
   }'
 ```
@@ -363,12 +363,12 @@ docker-compose up -d postgres
 
 ### Issue: "OTP not being sent"
 
-**Cause:** Debug mode enabled or Twilio credentials incorrect
+**Cause:** Debug mode enabled or SMSCountry credentials incorrect
 **Solution:**
 
 - Check console logs for OTP (if DEBUG=True)
-- Verify Twilio credentials in .env
-- Check Twilio account has credits
+- Verify SMSCountry credentials in .env
+- Check SMSCountry account has credits
 
 ### Issue: "CORS error in frontend"
 
@@ -409,9 +409,9 @@ docker build -t washioo-api .
 docker run -p 8000:8000 \
   -e DATABASE_URL=postgresql://... \
   -e SECRET_KEY=your-secret-key \
-  -e TWILIO_ACCOUNT_SID=... \
-  -e TWILIO_AUTH_TOKEN=... \
-  -e TWILIO_PHONE_NUMBER=... \
+  -e SMS_COUNTRY_KEY=... \
+  -e SMS_COUNTRY_TOKEN=... \
+  -e SMS_HEADER=... \
   washioo-api
 ```
 
@@ -512,7 +512,7 @@ curl http://localhost:8000/health
 1. Customize configuration for your environment
 2. Setup CI/CD pipeline
 3. Configure monitoring and alerting
-4. Test with real Twilio account
+4. Test with real SMSCountry account
 5. Deploy to production
 6. Setup backups and disaster recovery
 
@@ -521,5 +521,8 @@ curl http://localhost:8000/health
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Twilio Documentation](https://www.twilio.com/docs)
+- [SMSCountry Documentation](https://www.smscountry.com/docs)
 - [Docker Documentation](https://docs.docker.com/)
+
+
+

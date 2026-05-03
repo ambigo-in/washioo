@@ -4,7 +4,7 @@ Production-grade OTP-based authentication system for the Washioo car washing ser
 
 ## Features
 
-✅ **OTP-Based Authentication** - Secure SMS-based OTP verification using Twilio  
+✅ **OTP-Based Authentication** - Secure SMS-based OTP verification using SMSCountry  
 ✅ **JWT Token Management** - Access and refresh token generation with rotation  
 ✅ **Rate Limiting** - Built-in rate limiting to prevent abuse  
 ✅ **Role-Based Access Control** - Support for customer, cleaner, and admin roles  
@@ -38,7 +38,7 @@ Production-grade OTP-based authentication system for the Washioo car washing ser
     ├── __init__.py         # Utility exports
     ├── security.py         # JWT, OTP, hashing utilities
     ├── rate_limiter.py     # Rate limiting implementation
-    └── sms_provider.py     # SMS provider abstraction (Twilio)
+    └── sms_provider.py     # SMS provider abstraction (SMSCountry)
 ```
 
 ## Quick Start
@@ -80,9 +80,11 @@ Required environment variables:
 
 - `DATABASE_URL`: PostgreSQL connection string
 - `SECRET_KEY`: JWT secret (generate with: `python -c "import secrets; print(secrets.token_urlsafe(32))"`)
-- `TWILIO_ACCOUNT_SID`: Twilio account ID
-- `TWILIO_AUTH_TOKEN`: Twilio auth token
-- `TWILIO_PHONE_NUMBER`: Your Twilio phone number
+- `SMS_COUNTRY_KEY`: SMSCountry account ID
+- `SMS_COUNTRY_TOKEN`: SMSCountry auth token
+- `SMS_HEADER`: SMSCountry sender header
+
+Phone numbers must be sent to the backend as 10 digits only, for example `9876543210`. Do not include a country code in API requests.
 
 ### 4. Setup Database
 
@@ -120,7 +122,7 @@ Send OTP to a phone number.
 
 ```json
 {
-  "phone": "+919876543210"
+  "phone": "9876543210"
 }
 ```
 
@@ -148,7 +150,7 @@ Create a new user account (for new users only).
 ```json
 {
   "full_name": "John Doe",
-  "phone": "+919876543210",
+  "phone": "9876543210",
   "email": "john@example.com",
   "otp": "123456",
   "role": "customer"
@@ -180,7 +182,7 @@ Authenticate existing user (for users who already exist).
 
 ```json
 {
-  "phone": "+919876543210",
+  "phone": "9876543210",
   "otp": "123456"
 }
 ```
@@ -261,7 +263,7 @@ Logout user by revoking refresh token.
    └─> POST /auth/send-otp
    ├─> System checks if user exists (returns user_exist: false)
    ├─> Generate OTP
-   ├─> Send OTP via SMS (Twilio)
+   ├─> Send OTP via SMS (SMSCountry)
    └─> Store hashed OTP (5 min expiry)
 
 2. User receives OTP and submits signup form
@@ -362,22 +364,24 @@ See [.env.example](.env.example) for complete reference.
 ```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/washioo_db
 SECRET_KEY=your-secret-key-minimum-32-characters
-TWILIO_ACCOUNT_SID=your-twilio-account-sid
-TWILIO_AUTH_TOKEN=your-twilio-auth-token
-TWILIO_PHONE_NUMBER=+1234567890
+SMS_COUNTRY_KEY=your_smscountry_account_key
+SMS_COUNTRY_TOKEN=your_smscountry_auth_token
+SMS_HEADER=AMBHPL
 ```
 
 ## Development
 
-### Using Mock SMS (Testing)
+### SMS Delivery In Development
 
-Set `DEBUG=True` or `ENVIRONMENT=development` to use mock SMS provider:
+OTP delivery uses SMSCountry in every environment. Configure these variables before testing OTP flows:
 
 ```bash
-DEBUG=True
+SMS_COUNTRY_KEY=your_smscountry_account_key
+SMS_COUNTRY_TOKEN=your_smscountry_auth_token
+SMS_HEADER=AMBHPL
 ```
 
-This will log OTPs to console instead of sending real SMS.
+If credentials are missing, OTP send endpoints return an upstream delivery error.
 
 ### Database Migrations
 
@@ -409,7 +413,7 @@ docker-compose up -d --scale api=3
 - [ ] Set `ENVIRONMENT=production`
 - [ ] Generate strong `SECRET_KEY`
 - [ ] Configure `DATABASE_URL` with production database
-- [ ] Setup Twilio credentials
+- [ ] Setup SMSCountry credentials
 - [ ] Configure CORS origins
 - [ ] Enable HTTPS/SSL
 - [ ] Setup Redis for rate limiting (optional, for scalability)
@@ -435,14 +439,14 @@ Using cURL:
 # Send OTP
 curl -X POST http://localhost:8000/auth/send-otp \
   -H "Content-Type: application/json" \
-  -d '{"phone": "+919876543210"}'
+  -d '{"phone": "9876543210"}'
 
 # Signup
 curl -X POST http://localhost:8000/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "full_name": "John Doe",
-    "phone": "+919876543210",
+    "phone": "9876543210",
     "email": "john@example.com",
     "otp": "123456",
     "role": "customer"
@@ -462,14 +466,14 @@ Error: could not translate host name "postgres" to address
 ### OTP Not Sending
 
 ```
-Twilio credentials error
+SMSCountry credentials error
 ```
 
 **Solution:**
 
-- Verify TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN
-- Check Twilio phone number format (+country_code...)
-- Ensure Twilio account has credits
+- Verify SMS_COUNTRY_KEY and SMS_COUNTRY_TOKEN
+- Send 10-digit Indian mobile numbers without country code
+- Ensure SMSCountry account has credits
 
 ### Token Validation Error
 
@@ -532,3 +536,6 @@ For issues or questions:
 - JWT token management
 - Rate limiting
 - Audit logging
+
+
+

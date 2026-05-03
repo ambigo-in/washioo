@@ -2,7 +2,7 @@
 --
 -- Flyway placeholder configuration example:
 -- flyway.placeholders.admin_full_name=Admin User
--- flyway.placeholders.admin_phone_number=+919876543210
+-- flyway.placeholders.admin_phone_number=9876543210
 -- flyway.placeholders.admin_email=admin@example.com
 --
 -- If you run this file manually, replace the three ${...} placeholders
@@ -17,7 +17,7 @@ ON CONFLICT (role_name) DO NOTHING;
 DO $$
 DECLARE
     v_admin_full_name TEXT := 'Karamthoti Sai Kumar Naik';
-    v_admin_phone_number TEXT := '';
+    v_admin_phone_number TEXT := '9866792496';
     v_admin_email TEXT := 'ambigo.in@gmail.com';
     v_user_id UUID;
     v_role_id UUID;
@@ -73,3 +73,4 @@ BEGIN
     VALUES (v_user_id, v_role_id)
     ON CONFLICT (user_id, role_id) DO NOTHING;
 END $$;
+

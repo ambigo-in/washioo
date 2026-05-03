@@ -47,7 +47,7 @@
 │  │  • PasswordManager (Password Hashing)            │  │
 │  │  • HashManager (Token Hashing)                   │  │
 │  │  • rate_limiter (Rate Limiting)                  │  │
-│  │  • sms_provider (Twilio Integration)             │  │
+│  │  • sms_provider (SMSCountry Integration)             │  │
 │  └──────────────────────────────────────────────────┘  │
 │                       │                                 │
 └───────────────────────┼─────────────────────────────────┘
@@ -56,7 +56,7 @@
         │               │               │
         ▼               ▼               ▼
    ┌─────────┐    ┌──────────┐   ┌──────────┐
-   │PostgreSQL    │  Twilio  │   │  File    │
+   │PostgreSQL    │  SMSCountry  │   │  File    │
    │  Database    │   SMS    │   │  Logging │
    └─────────┘    └──────────┘   └──────────┘
 ```
@@ -209,7 +209,7 @@ def check_refresh_rate_limit(user_id)
 class SMSProvider (ABC):
     def send_otp(phone, otp)
 
-class TwilioSMSProvider(SMSProvider):
+class SMSCountrySMSProvider(SMSProvider):
     def send_otp(phone, otp)
 
 class MockSMSProvider(SMSProvider):
@@ -316,8 +316,8 @@ class Settings:
     RATE_LIMIT_ENABLED, SEND_OTP_RATE_LIMIT
     SEND_OTP_IP_RATE_LIMIT, AUTH_RATE_LIMIT, REFRESH_RATE_LIMIT
 
-    # Twilio
-    TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+    # SMSCountry
+    SMS_COUNTRY_KEY, SMS_COUNTRY_TOKEN, SMS_HEADER
 
     # CORS
     CORS_ORIGINS, CORS_CREDENTIALS, CORS_METHODS, CORS_HEADERS
@@ -400,7 +400,7 @@ Service (AuthenticationService)
   │   └─ OTPCodeRepository.create()
   │
   ├─ Send OTP via SMS
-  │   └─ sms_provider.send_otp() → Twilio API
+  │   └─ sms_provider.send_otp() → SMSCountry API
   │
   ├─ Create audit log
   │   └─ AuditLogRepository.create()
@@ -782,7 +782,7 @@ Load Balancer (NGINX)
       ├─ Redis (rate limiting, caching)
       │   └─ Persistence
       │
-      ├─ Twilio (SMS)
+      ├─ SMSCountry (SMS)
       │
       └─ Monitoring
           ├─ Sentry (error tracking)
@@ -800,3 +800,4 @@ This architecture provides:
 - ✅ Security (proper hashing, token rotation)
 - ✅ Maintainability (layered approach)
 - ✅ Performance (indexing, pooling)
+

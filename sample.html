@@ -502,7 +502,7 @@
                 <form onsubmit="sendOTP(event)">
                     <div class="form-group">
                         <label>Phone Number</label>
-                        <input type="tel" id="phone" placeholder="+919876543210" required>
+                        <input type="tel" id="phone" placeholder="9876543210" required>
                         <small style="color: #666;">Response: Returns user_exist flag</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Send OTP</button>
@@ -511,7 +511,7 @@
                 <div class="code-block">
 POST /auth/send-otp
 {
-  "phone_number": "+919876543210"
+  "phone_number": "9876543210"
 }
 
 Response:
@@ -562,7 +562,7 @@ Response:
 POST /auth/signup
 {
   "full_name": "John Doe",
-  "phone_number": "+919876543210",
+  "phone_number": "9876543210",
   "email": "john@example.com",
   "otp_code": "123456",
   "role": "customer"  // Can be customer or cleaner
@@ -590,7 +590,7 @@ Response (Adding Role):
                     <div class="form-row">
                         <div class="form-group">
                             <label>Phone Number</label>
-                            <input type="tel" placeholder="+919876543210" required>
+                            <input type="tel" placeholder="9876543210" required>
                         </div>
                         <div class="form-group">
                             <label>OTP Code</label>
@@ -603,7 +603,7 @@ Response (Adding Role):
                 <div class="code-block">
 POST /auth/signin
 {
-  "phone_number": "+919876543210",
+  "phone_number": "9876543210",
   "otp_code": "123456"
 }
 
@@ -936,7 +936,7 @@ Response:
                     <tbody>
                         <tr>
                             <td><strong>BK-20240515-A1B2C3D4</strong></td>
-                            <td>John Doe (+919876543210)</td>
+                            <td>John Doe (9876543210)</td>
                             <td>Car Wash</td>
                             <td>2024-05-15 @ 10:30 AM</td>
                             <td><span class="badge badge-in-progress">In Progress</span></td>
@@ -948,7 +948,7 @@ Response:
                         </tr>
                         <tr>
                             <td><strong>BK-20240514-X9Y8Z7W6</strong></td>
-                            <td>Jane Smith (+919988776655)</td>
+                            <td>Jane Smith (9988776655)</td>
                             <td>Bike Wash</td>
                             <td>2024-05-14 @ 3:00 PM</td>
                             <td><span class="badge badge-completed">Completed</span></td>
@@ -959,7 +959,7 @@ Response:
                         </tr>
                         <tr>
                             <td><strong>BK-20240513-P5Q4R3S2</strong></td>
-                            <td>Mike Johnson (+919876544321)</td>
+                            <td>Mike Johnson (9876544321)</td>
                             <td>Car Wash</td>
                             <td>2024-05-13 @ 11:00 AM</td>
                             <td><span class="badge badge-pending">Pending</span></td>
