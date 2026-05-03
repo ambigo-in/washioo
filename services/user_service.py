@@ -18,6 +18,8 @@ def get_user_profile(user: User):
         "email": user.email,
         "is_verified": user.is_verified,
         "is_active": user.is_active,
+        "average_rating": float(user.average_rating) if user.average_rating is not None else 0,
+        "total_ratings": user.total_ratings or 0,
         "roles": [user_role.role.role_name for user_role in user.user_roles],
         "created_at": user.created_at
     }

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, DateTime
+from sqlalchemy import Column, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -15,3 +15,7 @@ class UserRole(Base):
 
     user = relationship("User", back_populates="user_roles")
     role = relationship("Role", back_populates="user_roles")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "role_id"),
+    )

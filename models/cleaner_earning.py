@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -18,3 +18,7 @@ class CleanerEarning(Base):
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     cleaner = relationship("CleanerProfile", back_populates="earnings")
+
+    __table_args__ = (
+        Index("idx_cleaner_earnings_cleaner", "cleaner_id"),
+    )

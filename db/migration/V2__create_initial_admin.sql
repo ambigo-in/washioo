@@ -16,9 +16,9 @@ ON CONFLICT (role_name) DO NOTHING;
 
 DO $$
 DECLARE
-    v_admin_full_name TEXT := '${admin_full_name}';
-    v_admin_phone_number TEXT := '${admin_phone_number}';
-    v_admin_email TEXT := '${admin_email}';
+    v_admin_full_name TEXT := 'Karamthoti Sai Kumar Naik';
+    v_admin_phone_number TEXT := '';
+    v_admin_email TEXT := 'ambigo.in@gmail.com';
     v_user_id UUID;
     v_role_id UUID;
     v_email_owner_id UUID;

@@ -36,7 +36,7 @@ def update_my_profile(
             "user": updated_user
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/", tags=["Admin APIs"])
@@ -58,7 +58,7 @@ def list_users_by_role(
             "total": len(users)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/{user_id}", tags=["Admin APIs"])
@@ -70,7 +70,7 @@ def get_user_by_id(user_id: str, db: Session = Depends(get_db), current_admin=De
             "user": user
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.put("/{user_id}", tags=["Admin APIs"])
@@ -87,7 +87,7 @@ def update_user(
             "user": updated_user
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.delete("/{user_id}", tags=["Admin APIs"])
@@ -96,4 +96,4 @@ def delete_user(user_id: str, db: Session = Depends(get_db), current_admin=Depen
         delete_user_service(db, user_id)
         return {"message": "User deleted successfully"}
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")

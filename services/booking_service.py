@@ -550,6 +550,8 @@ def format_cleaner_profile(cleaner):
         "approval_status": cleaner.approval_status,
         "availability_status": cleaner.availability_status,
         "rating": float(cleaner.rating) if cleaner.rating is not None else 0,
+        "average_rating": float(cleaner.average_rating) if getattr(cleaner, "average_rating", None) is not None else 0,
+        "total_ratings": cleaner.total_ratings or 0,
         "total_jobs_completed": cleaner.total_jobs_completed or 0,
         "created_at": cleaner.created_at.isoformat() if cleaner.created_at else None,
     }

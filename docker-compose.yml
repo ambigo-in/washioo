@@ -3,12 +3,14 @@ version: "3.8"
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: washioo_postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: washioo_user
-      POSTGRES_PASSWORD: washioo_password
-      POSTGRES_DB: washioo_db
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     ports:
       - "5432:5432"
     volumes:
@@ -17,7 +19,7 @@ services:
     networks:
       - washioo_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U washioo_user"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,22 +30,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: washioo_api
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: postgresql://washioo_user:washioo_password@postgres:5432/washioo_db
-      DEBUG: "False"
-      ENVIRONMENT: production
-      SECRET_KEY: ${SECRET_KEY}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
-      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID}
-      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000"]}'
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - .:/app
     networks:
       - washioo_network
     command: uvicorn main:app --host 0.0.0.0 --port 8000

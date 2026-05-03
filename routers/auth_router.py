@@ -91,7 +91,7 @@ def customer_signup(request: Request, payload: RoleSignupRequest, db: Session = 
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Customer signup successful", access, refresh, "customer", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/customer/signin", tags=[AUTH_TAG])
@@ -102,7 +102,7 @@ def customer_signin(request: Request, payload: SigninRequest, db: Session = Depe
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Customer login successful", access, refresh, "customer", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/cleaner/send-otp", tags=[AUTH_TAG])
@@ -127,7 +127,7 @@ def cleaner_signup(request: Request, payload: CleanerSignupRequest, db: Session 
             {"cleaner": format_cleaner_profile(cleaner)}
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/cleaner/signin", tags=[AUTH_TAG])
@@ -146,7 +146,7 @@ def cleaner_signin(request: Request, payload: SigninRequest, db: Session = Depen
             {"cleaner": format_cleaner_profile(cleaner)}
         )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/admin/send-otp", tags=[AUTH_TAG])
@@ -171,7 +171,7 @@ def admin_signin(request: Request, payload: SigninRequest, db: Session = Depends
         user = get_user_by_phone(db, payload.phone_number)
         return _token_response("Admin login successful", access, refresh, "admin", user)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/admin/create", tags=[ADMIN_TAG])
@@ -187,7 +187,7 @@ def create_admin_account(
             "admin": get_user_profile(admin)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.patch("/admin/{admin_id}", tags=[ADMIN_TAG])
@@ -206,7 +206,7 @@ def update_admin_account(
             "admin": admin
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/signup", tags=[AUTH_TAG])
@@ -236,7 +236,7 @@ def refresh_token_api(request: Request, payload: RefreshTokenRequest, db: Sessio
             "token_type": "bearer"
         }
     except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=401, detail="Request could not be processed")
 
 
 @router.post("/logout", tags=[AUTH_TAG])
@@ -247,7 +247,7 @@ def logout_api(payload: LogoutRequest, db: Session = Depends(get_db), current_us
             "message": "Logged out successfully"
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/me", tags=[PROFILE_TAG])

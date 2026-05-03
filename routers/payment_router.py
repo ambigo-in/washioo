@@ -48,7 +48,7 @@ def collect_booking_payment(
             "payment": payment,
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @workflow_router.patch("/admin/payments/{payment_id}/split", tags=[PAYMENT_TAG])
@@ -66,7 +66,7 @@ def split_collected_payment(
             "payment": payment,
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @workflow_router.patch("/admin/payments/{payment_id}/handover/collect", tags=[PAYMENT_TAG])
@@ -83,7 +83,7 @@ def collect_admin_share_from_cleaner(
             "payment": payment,
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @workflow_router.get("/admin/payments", tags=[PAYMENT_TAG])
@@ -104,7 +104,7 @@ def list_admin_collection_payments(
             "total": len(payments),
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @workflow_router.get("/cleaner/earnings", tags=[PAYMENT_TAG])
@@ -120,7 +120,7 @@ def get_current_cleaner_earnings(
             "earnings": earnings,
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @workflow_router.get("/customer/bookings/{booking_id}/payment-status", tags=[PAYMENT_TAG])
@@ -137,7 +137,7 @@ def get_customer_booking_payment_status(
             "payment": payment_status,
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.get("/stats", tags=[PAYMENT_TAG])
@@ -153,7 +153,7 @@ def get_payment_statistics(
             "statistics": stats
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/", tags=[PAYMENT_TAG])
@@ -176,7 +176,7 @@ def list_payments(
             **result
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/customer/{customer_id}", tags=[PAYMENT_TAG])
@@ -197,7 +197,7 @@ def get_customer_payments(
             "total": len(payments)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/booking/{booking_id}", tags=[PAYMENT_TAG])
@@ -214,7 +214,7 @@ def get_booking_payment(
             "payment": payment
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.get("/{payment_id}", tags=[PAYMENT_TAG])
@@ -231,7 +231,7 @@ def get_payment_details(
             "payment": payment
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.put("/{payment_id}", tags=[PAYMENT_TAG])
@@ -249,7 +249,7 @@ def update_payment_manual(
             "payment": updated_payment
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/{payment_id}/mark-paid", tags=[PAYMENT_TAG])
@@ -267,7 +267,7 @@ def mark_payment_as_paid(
             "payment": updated_payment
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/{payment_id}/mark-failed", tags=[PAYMENT_TAG])
@@ -284,7 +284,7 @@ def mark_payment_as_failed(
             "payment": updated_payment
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.delete("/{payment_id}", tags=[PAYMENT_TAG])
@@ -301,4 +301,4 @@ def delete_payment(
         else:
             raise HTTPException(status_code=404, detail="Payment not found")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")

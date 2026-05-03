@@ -8,7 +8,7 @@ from core.database import Base
 class ServiceCategory(Base):
     __tablename__ = "service_categories"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_name = Column(String, unique=True, nullable=False)
+    service_name = Column(String(50), unique=True, nullable=False)
     description = Column(String)
     base_price = Column(Numeric(10, 2), nullable=False)
     estimated_duration_minutes = Column(Integer)

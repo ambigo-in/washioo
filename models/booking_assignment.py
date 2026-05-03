@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import CheckConstraint, Column, String, DateTime, ForeignKey, Index, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -17,9 +17,19 @@ class BookingAssignment(Base):
     accepted_at = Column(DateTime)
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
-    assignment_status = Column(String, default="assigned")
-    cleaner_notes = Column(String)
+    assignment_status = Column(String(30), default="assigned")
+    cleaner_notes = Column(Text)
 
     booking = relationship("Booking", back_populates="assignment")
     cleaner = relationship("CleanerProfile", back_populates="assignments")
     admin = relationship("User", foreign_keys=[assigned_by_admin])
+
+    __table_args__ = (
+        CheckConstraint(
+            "assignment_status IN ('assigned', 'accepted', 'in_progress', 'rejected', 'completed', 'cancelled')",
+            name="chk_assignment_status",
+        ),
+        Index("idx_assignments_cleaner", "cleaner_id"),
+        Index("idx_assignments_status", "assignment_status"),
+        Index("idx_assignments_booking", "booking_id"),
+    )

@@ -76,7 +76,7 @@ def get_services(
             "total": len(service_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/service-categories/{service_id}", tags=[PUBLIC_TAG])
@@ -120,7 +120,7 @@ def create_service_category_admin(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.patch("/admin/service-categories/{service_id}", tags=[ADMIN_TAG])
@@ -188,7 +188,7 @@ def create_user_address(
             "address": format_address(address)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/addresses", tags=[ADDRESS_TAG, CUSTOMER_TAG])
@@ -207,7 +207,7 @@ def get_user_addresses_api(
             "total": len(address_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.patch("/address/{address_id}", tags=[ADDRESS_TAG, CUSTOMER_TAG])
@@ -282,7 +282,7 @@ def book_service(
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/my-bookings", tags=[CUSTOMER_TAG])
@@ -304,7 +304,7 @@ def get_my_bookings(
             "total": len(bookings_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/my-bookings/{booking_id}", tags=[CUSTOMER_TAG])
@@ -321,7 +321,7 @@ def get_my_booking_details(
             "booking": format_customer_booking(booking)
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.patch("/my-bookings/{booking_id}", tags=[CUSTOMER_TAG])
@@ -339,7 +339,7 @@ def update_my_booking(
             "booking": format_customer_booking(booking)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/my-bookings/{booking_id}/cancel", tags=[CUSTOMER_TAG])
@@ -357,7 +357,7 @@ def cancel_my_booking(
             "booking": format_customer_booking(booking)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 # ============================================================
@@ -383,7 +383,7 @@ def get_all_bookings_admin(
             "total": len(bookings_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/admin/bookings/{booking_id}", tags=[ADMIN_TAG])
@@ -400,7 +400,7 @@ def get_booking_admin(
             "booking": format_admin_booking(booking)
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.patch("/admin/bookings/{booking_id}", tags=[ADMIN_TAG])
@@ -418,7 +418,7 @@ def update_booking_admin(
             "booking": format_admin_booking(booking)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/admin/customers/{customer_id}/bookings", tags=[ADMIN_TAG])
@@ -440,7 +440,7 @@ def get_customer_bookings_admin(
             "total": len(bookings_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/admin/bookings/{booking_id}/assign", tags=[ADMIN_TAG])
@@ -458,7 +458,7 @@ def assign_booking_admin(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/admin/bookings-by-status/{status}", tags=[ADMIN_TAG])
@@ -491,7 +491,7 @@ def get_bookings_by_status_admin(
             "total": len(bookings_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 # ============================================================
@@ -512,7 +512,7 @@ def create_cleaner_profile_admin(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/admin/cleaners", tags=[ADMIN_TAG])
@@ -534,7 +534,7 @@ def list_cleaners_admin(
             "total": len(cleaner_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
@@ -551,7 +551,7 @@ def get_cleaner_admin(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.patch("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
@@ -569,7 +569,7 @@ def update_cleaner_admin(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.delete("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
@@ -586,7 +586,7 @@ def delete_cleaner_admin(
             "cleaner_id": cleaner_id
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.get("/cleaner/profile", tags=[CLEANER_TAG])
@@ -602,7 +602,7 @@ def get_current_cleaner_profile(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.patch("/cleaner/availability", tags=[CLEANER_TAG])
@@ -619,7 +619,7 @@ def update_current_cleaner_availability(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 # ============================================================
@@ -644,7 +644,7 @@ def list_assignments_admin(
             "total": len(assignment_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/cleaner/assignments", tags=[CLEANER_TAG])
@@ -665,7 +665,7 @@ def list_cleaner_assignments(
             "total": len(assignment_list)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.get("/cleaner/assignments/{assignment_id}", tags=[CLEANER_TAG])
@@ -682,7 +682,7 @@ def get_cleaner_assignment(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
 
 
 @router.post("/cleaner/assignments/{assignment_id}/accept", tags=[CLEANER_TAG])
@@ -700,7 +700,7 @@ def accept_assignment(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/cleaner/assignments/{assignment_id}/reject", tags=[CLEANER_TAG])
@@ -718,7 +718,7 @@ def reject_assignment(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/cleaner/assignments/{assignment_id}/start", tags=[CLEANER_TAG])
@@ -736,7 +736,7 @@ def start_assignment(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
 @router.post("/cleaner/assignments/{assignment_id}/complete", tags=[CLEANER_TAG])
@@ -754,6 +754,6 @@ def complete_assignment(
             "assignment": format_assignment(assignment)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Request could not be processed")
 
 

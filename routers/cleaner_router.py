@@ -22,4 +22,4 @@ def get_cleaner_booking_details(
             "booking": format_cleaner_booking_detail(booking),
         }
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail="Request could not be processed")
