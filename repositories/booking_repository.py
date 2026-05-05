@@ -1,7 +1,7 @@
 from models.booking import Booking
 from models.booking_assignment import BookingAssignment
 from models.cleaner_profile import CleanerProfile
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 def create_booking(db, booking_data):
     """Create a new booking"""
@@ -36,11 +36,11 @@ def get_customer_bookings(db, customer_id, limit=50, offset=0):
     return (
         db.query(Booking)
         .options(
-            joinedload(Booking.service_category),
-            joinedload(Booking.address),
-            joinedload(Booking.vehicle),
-            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
-            joinedload(Booking.payment)
+            selectinload(Booking.service_category),
+            selectinload(Booking.address),
+            selectinload(Booking.vehicle),
+            selectinload(Booking.assignment).selectinload(BookingAssignment.cleaner).selectinload(CleanerProfile.user),
+            selectinload(Booking.payment)
         )
         .filter(Booking.customer_id == customer_id)
         .order_by(Booking.created_at.desc())
@@ -54,12 +54,12 @@ def get_all_bookings(db, limit=50, offset=0):
     return (
         db.query(Booking)
         .options(
-            joinedload(Booking.customer),
-            joinedload(Booking.service_category),
-            joinedload(Booking.address),
-            joinedload(Booking.vehicle),
-            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
-            joinedload(Booking.payment)
+            selectinload(Booking.customer),
+            selectinload(Booking.service_category),
+            selectinload(Booking.address),
+            selectinload(Booking.vehicle),
+            selectinload(Booking.assignment).selectinload(BookingAssignment.cleaner).selectinload(CleanerProfile.user),
+            selectinload(Booking.payment)
         )
         .order_by(Booking.created_at.desc())
         .offset(offset)
@@ -72,12 +72,12 @@ def get_bookings_by_status(db, status, limit=50, offset=0):
     return (
         db.query(Booking)
         .options(
-            joinedload(Booking.customer),
-            joinedload(Booking.service_category),
-            joinedload(Booking.address),
-            joinedload(Booking.vehicle),
-            joinedload(Booking.assignment).joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
-            joinedload(Booking.payment)
+            selectinload(Booking.customer),
+            selectinload(Booking.service_category),
+            selectinload(Booking.address),
+            selectinload(Booking.vehicle),
+            selectinload(Booking.assignment).selectinload(BookingAssignment.cleaner).selectinload(CleanerProfile.user),
+            selectinload(Booking.payment)
         )
         .filter(Booking.booking_status == status)
         .order_by(Booking.created_at.desc())

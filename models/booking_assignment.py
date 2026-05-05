@@ -32,4 +32,6 @@ class BookingAssignment(Base):
         Index("idx_assignments_cleaner", "cleaner_id"),
         Index("idx_assignments_status", "assignment_status"),
         Index("idx_assignments_booking", "booking_id"),
+        Index("idx_assignments_cleaner_status_assigned", "cleaner_id", "assignment_status", "assigned_at"),
+        Index("idx_assignments_status_assigned", "assignment_status", "assigned_at"),
     )

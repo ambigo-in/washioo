@@ -1,6 +1,7 @@
 from models.payment import Payment
 from models.cleaner_earning import CleanerEarning
 from models.booking import Booking
+from sqlalchemy import case, func
 from sqlalchemy.orm import joinedload
 
 
@@ -82,16 +83,21 @@ def get_payments_by_customer(db, customer_id, limit=50, offset=0):
 
 
 def get_payment_stats(db):
-    total = db.query(Payment).count()
-    pending = db.query(Payment).filter(Payment.payment_status == "pending").count()
-    paid = db.query(Payment).filter(Payment.payment_status == "paid").count()
-    failed = db.query(Payment).filter(Payment.payment_status == "failed").count()
+    total, pending, paid, failed = (
+        db.query(
+            func.count(Payment.id),
+            func.coalesce(func.sum(case((Payment.payment_status == "pending", 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Payment.payment_status == "paid", 1), else_=0)), 0),
+            func.coalesce(func.sum(case((Payment.payment_status == "failed", 1), else_=0)), 0),
+        )
+        .one()
+    )
     
     return {
-        "total": total,
-        "pending": pending,
-        "paid": paid,
-        "failed": failed
+        "total": int(total or 0),
+        "pending": int(pending or 0),
+        "paid": int(paid or 0),
+        "failed": int(failed or 0)
     }
 
 
@@ -127,9 +133,8 @@ def delete_payment(db, payment_id):
 
 
 def get_payment_total_amount(db, status=None):
-    query = db.query(Payment)
+    query = db.query(func.coalesce(func.sum(Payment.amount), 0))
     if status:
         query = query.filter(Payment.payment_status == status)
-    
-    total = sum(float(p.amount) for p in query.all() if p.amount)
-    return total
+
+    return float(query.scalar() or 0)

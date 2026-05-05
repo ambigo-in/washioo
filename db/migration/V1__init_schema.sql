@@ -197,6 +197,8 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE INDEX idx_bookings_customer ON bookings(customer_id);
 CREATE INDEX idx_bookings_status ON bookings(booking_status);
 CREATE INDEX idx_bookings_date ON bookings(scheduled_date);
+CREATE INDEX idx_bookings_customer_created ON bookings(customer_id, created_at DESC);
+CREATE INDEX idx_bookings_status_created ON bookings(booking_status, created_at DESC);
 
 -- ============================================================
 -- 10. BOOKING ASSIGNMENTS TABLE
@@ -220,6 +222,8 @@ CREATE TABLE IF NOT EXISTS booking_assignments (
 
 CREATE INDEX idx_assignments_cleaner ON booking_assignments(cleaner_id);
 CREATE INDEX idx_assignments_status ON booking_assignments(assignment_status);
+CREATE INDEX idx_assignments_cleaner_status_assigned ON booking_assignments(cleaner_id, assignment_status, assigned_at DESC);
+CREATE INDEX idx_assignments_status_assigned ON booking_assignments(assignment_status, assigned_at DESC);
 
 -- ============================================================
 -- 11. PAYMENTS TABLE

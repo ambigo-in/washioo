@@ -1,4 +1,4 @@
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from models.booking_assignment import BookingAssignment
 from models.booking import Booking
 from models.cleaner_profile import CleanerProfile
@@ -44,10 +44,10 @@ def get_cleaner_assignments(db, cleaner_id, status=None, limit=50, offset=0):
     query = (
         db.query(BookingAssignment)
         .options(
-            joinedload(BookingAssignment.booking).joinedload(Booking.service_category),
-            joinedload(BookingAssignment.booking).joinedload(Booking.customer),
-            joinedload(BookingAssignment.booking).joinedload(Booking.address),
-            joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
+            selectinload(BookingAssignment.booking).selectinload(Booking.service_category),
+            selectinload(BookingAssignment.booking).selectinload(Booking.customer),
+            selectinload(BookingAssignment.booking).selectinload(Booking.address),
+            selectinload(BookingAssignment.cleaner).selectinload(CleanerProfile.user),
         )
         .filter(BookingAssignment.cleaner_id == cleaner_id)
     )
@@ -60,10 +60,10 @@ def get_cleaner_assignments(db, cleaner_id, status=None, limit=50, offset=0):
 
 def get_all_assignments(db, status=None, limit=50, offset=0):
     query = db.query(BookingAssignment).options(
-        joinedload(BookingAssignment.booking).joinedload(Booking.service_category),
-        joinedload(BookingAssignment.booking).joinedload(Booking.customer),
-        joinedload(BookingAssignment.booking).joinedload(Booking.address),
-        joinedload(BookingAssignment.cleaner).joinedload(CleanerProfile.user),
+        selectinload(BookingAssignment.booking).selectinload(Booking.service_category),
+        selectinload(BookingAssignment.booking).selectinload(Booking.customer),
+        selectinload(BookingAssignment.booking).selectinload(Booking.address),
+        selectinload(BookingAssignment.cleaner).selectinload(CleanerProfile.user),
     )
 
     if status:

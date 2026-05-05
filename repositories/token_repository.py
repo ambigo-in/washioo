@@ -1,15 +1,15 @@
 from datetime import datetime
 from models.refresh_token import RefreshToken
-from core.security import hash_data, verify_hash
+from core.security import hash_token, verify_hash, verify_token_hash
 
 def save_refresh_token(db, user_id, jti, token, expires_at):
-    """Save refresh token with hashed JWT and JTI for tracking"""
-    token_hash = hash_data(token)  # Hash the JWT before storage
+    """Save refresh token with a fast keyed hash and JTI for tracking."""
+    token_hash = hash_token(token)
     
     token_obj = RefreshToken(
         user_id=user_id,
         jti=jti,  # Store JTI for uniqueness
-        token_hash=token_hash,  # Store hashed token for verification
+        token_hash=token_hash,
         expires_at=expires_at
     )
     db.add(token_obj)
@@ -54,8 +54,12 @@ def get_refresh_token(db, token: str):
     if not token_obj:
         return None
     
-    # Verify the provided token matches the stored hash
-    if not verify_hash(token, token_obj.token_hash):
-        return None
+    # Verify the provided token matches the stored hash.
+    if not verify_token_hash(token, token_obj.token_hash):
+        # Backward compatibility for refresh tokens issued before HMAC hashing.
+        if not token_obj.token_hash.startswith("$2") or not verify_hash(token, token_obj.token_hash):
+            return None
+        token_obj.token_hash = hash_token(token)
+        db.commit()
     
     return token_obj

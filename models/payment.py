@@ -53,4 +53,8 @@ class Payment(Base):
         Index("idx_payments_booking", "booking_id"),
         Index("idx_payments_customer", "customer_id"),
         Index("idx_payments_cleaner_handover_status", "cleaner_handover_status"),
+        Index("idx_payments_status_created", "payment_status", "created_at"),
+        Index("idx_payments_customer_created", "customer_id", "created_at"),
+        Index("idx_payments_collection_status_created", "status", "created_at"),
+        Index("idx_payments_handover_status_created", "cleaner_handover_status", "created_at"),
     )

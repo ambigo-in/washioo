@@ -43,5 +43,7 @@ class Booking(Base):
         Index("idx_bookings_service_category", "service_category_id"),
         Index("idx_bookings_address", "address_id"),
         Index("idx_bookings_vehicle", "vehicle_id"),
+        Index("idx_bookings_customer_created", "customer_id", "created_at"),
+        Index("idx_bookings_status_created", "booking_status", "created_at"),
     )
 

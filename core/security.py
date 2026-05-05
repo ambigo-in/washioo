@@ -14,6 +14,16 @@ def hash_data(data: str):
 def verify_hash(plain: str, hashed: str):
     return pwd_context.verify(plain, hashed)
 
+def hash_token(token: str):
+    return hmac.new(
+        settings.SECRET_KEY.encode("utf-8"),
+        token.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+def verify_token_hash(token: str, token_hash: str):
+    return hmac.compare_digest(hash_token(token), token_hash)
+
 def hash_identifier(value: str):
     normalized = "".join(value.split()).upper()
     return hmac.new(
