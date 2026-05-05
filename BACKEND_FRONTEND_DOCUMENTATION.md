@@ -327,11 +327,12 @@ Cleaner auth responses also include:
   "country": "India",
   "latitude": 12.9716,
   "longitude": 77.5946,
-  "is_default": true
+  "is_default": true,
+  "is_deleted": false
 }
 ```
 
-Some address list/create responses may omit latitude and longitude.
+Address lists return active addresses only. Removed addresses are hidden from list/default-address APIs, but historical booking responses can still include a removed address for audit/history.
 
 ### Customer Vehicle
 
@@ -534,7 +535,7 @@ Cleaner-facing auth/profile responses and nested cleaner objects return only mas
 | `POST` | `/washioo-api/services/address` | Customer | Create address |
 | `GET` | `/washioo-api/services/addresses` | Customer | List own addresses |
 | `PATCH` | `/washioo-api/services/address/{address_id}` | Customer | Update own address |
-| `DELETE` | `/washioo-api/services/address/{address_id}` | Customer | Delete own address |
+| `DELETE` | `/washioo-api/services/address/{address_id}` | Customer | Remove own address |
 | `GET` | `/washioo-api/customer/vehicles` | Customer | List own vehicles |
 | `POST` | `/washioo-api/customer/vehicles` | Customer | Create vehicle |
 | `PATCH` | `/washioo-api/customer/vehicles/{vehicle_id}` | Customer | Update own vehicle |
@@ -843,6 +844,24 @@ Request:
 ```
 
 Required fields are `address_line1`, `latitude`, and `longitude`. If `is_default=true`, backend makes other addresses non-default.
+
+### Remove Address
+
+```http
+DELETE /washioo-api/services/address/{address_id}
+```
+
+Response:
+
+```json
+{
+  "message": "Address removed successfully",
+  "address_id": "address_uuid",
+  "deletion_type": "soft_deleted"
+}
+```
+
+`deletion_type` can be `hard_deleted` when the address has no bookings, or `soft_deleted` when booking history references it. Frontend should treat both as success and remove the address from the visible list. Use "Remove address" text in the UI rather than promising permanent deletion.
 
 ### Manage Vehicles
 
@@ -1311,7 +1330,7 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 ### Customer UI
 
 - Show service categories from `/washioo-api/services/`.
-- Manage addresses with `/washioo-api/services/address*`.
+- Manage addresses with `/washioo-api/services/address*`; keep the remove button and remove the address from UI state after a successful `DELETE`.
 - Manage vehicles with `/washioo-api/customer/vehicles`.
 - Booking create requires service and schedule, plus address/default address. Vehicle is optional and falls back to the default vehicle when available.
 - Allow edit/cancel only for `pending` bookings.

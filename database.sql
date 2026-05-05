@@ -114,14 +114,17 @@ CREATE TABLE IF NOT EXISTS addresses (
     latitude NUMERIC(10,8),
     longitude NUMERIC(11,8),
     is_default BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_addresses_user ON addresses(user_id);
+CREATE INDEX idx_addresses_user_active ON addresses(user_id, is_deleted);
 CREATE INDEX idx_addresses_location ON addresses(latitude, longitude);
-CREATE UNIQUE INDEX idx_one_default_address_per_user ON addresses(user_id) WHERE is_default = TRUE;
+CREATE UNIQUE INDEX idx_one_default_address_per_user ON addresses(user_id) WHERE is_default = TRUE AND is_deleted = FALSE;
 
 -- ============================================================
 -- 7. CLEANER PROFILES TABLE

@@ -656,6 +656,16 @@ refresh_tokens
   ├─ revoked_at
   └─ created_at
 
+addresses
+  - id (UUID, PK)
+  - user_id (FK to users)
+  - is_default
+  - is_deleted
+  - deleted_at
+  - bookings reference addresses with ON DELETE RESTRICT
+
+Address removal is history-safe: unused addresses can be hard deleted, while addresses referenced by bookings are soft deleted and hidden from future address/default lookups.
+
 audit_logs
   ├─ id (UUID, PK)
   ├─ user_id (FK → users, index)

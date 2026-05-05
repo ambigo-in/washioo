@@ -49,6 +49,7 @@ V8__add_cleaner_handover_status.sql
 V9__add_bidirectional_ratings.sql
 V10__deployment_indexes.sql
 V11__add_customer_vehicles.sql
+V12__soft_delete_addresses.sql
 ```
 
 ## Phone Number Format
@@ -470,9 +471,12 @@ Some address endpoints omit `latitude` and `longitude`; booking response entitie
   "country": "India",
   "latitude": 0,
   "longitude": 0,
-  "is_default": false
+  "is_default": false,
+  "is_deleted": false
 }
 ```
+
+`GET /services/addresses` returns active addresses only. Removed addresses are hidden from address lists and default-address lookup, but may still appear inside historical booking responses.
 
 ### CustomerVehicle
 
@@ -786,7 +790,9 @@ If `is_default=true`, backend makes the customer's other vehicles non-default. B
 | `POST` | `/washioo-api/services/address` | `CreateAddressRequest` | `{ "message": "Address created successfully", "address": Address }` | Bearer token, role: `customer` |
 | `GET` | `/washioo-api/services/addresses` | None | `{ "message": "Addresses fetched successfully", "addresses": [Address], "total": 0 }` | Bearer token, role: `customer` |
 | `PATCH` | `/washioo-api/services/address/{address_id}` | Path: `address_id`, body: `UpdateAddressRequest` | `{ "message": "Address updated successfully", "address": Address }` | Bearer token, role: `customer` |
-| `DELETE` | `/washioo-api/services/address/{address_id}` | Path: `address_id` | `{ "message": "Address deleted successfully", "address_id": "string" }` | Bearer token, role: `customer` |
+| `DELETE` | `/washioo-api/services/address/{address_id}` | Path: `address_id` | `{ "message": "Address removed successfully", "address_id": "string", "deletion_type": "soft_deleted \| hard_deleted" }` | Bearer token, role: `customer` |
+
+Address removal is history-safe. If the address has no bookings, the backend hard deletes it. If bookings reference it, the backend soft deletes it with `is_deleted=true`, clears `is_default`, and hides it from future address lists while preserving booking history.
 
 ## Customer Booking APIs
 

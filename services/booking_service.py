@@ -614,6 +614,7 @@ def format_address(address):
         "longitude": float(address.longitude) if address.longitude is not None else None,
         "location_verified": bool(getattr(address, "location_verified", False)),
         "is_default": address.is_default,
+        "is_deleted": bool(getattr(address, "is_deleted", False)),
     }
 
 def _identity_is_masked(value):

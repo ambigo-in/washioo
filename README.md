@@ -414,6 +414,8 @@ alembic revision --autogenerate -m "Description"
 alembic upgrade head
 ```
 
+Current SQL migrations also include `db/migration/V12__soft_delete_addresses.sql`, which adds history-safe address removal. Addresses referenced by bookings are soft deleted and hidden from future address lists instead of being physically removed.
+
 ## Deployment
 
 ### Docker Deployment

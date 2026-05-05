@@ -247,10 +247,13 @@ def delete_user_address(
     if not address or address.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Address not found")
 
-    delete_address(db, address_id)
+    deleted_address, deletion_type = delete_address(db, address_id)
+    if not deleted_address:
+        raise HTTPException(status_code=404, detail="Address not found")
     return {
-        "message": "Address deleted successfully",
-        "address_id": address_id
+        "message": "Address removed successfully",
+        "address_id": address_id,
+        "deletion_type": deletion_type,
     }
 
 
@@ -758,4 +761,3 @@ def complete_assignment(
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
-
