@@ -37,6 +37,8 @@ def get_refresh_token(db, token: str):
     
     if not payload:
         return None
+    if payload.get("type") != "refresh":
+        return None
     
     jti = payload.get("jti")
     if not jti:

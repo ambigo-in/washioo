@@ -15,13 +15,32 @@ def _get_role_or_raise(db, role_name: str):
     return role
 
 
-def _create_tokens(db, user, role_name: str | None = None):
-    token_data = {"sub": str(user.id)}
-    if role_name:
-        token_data["role"] = role_name
+def _user_role_names(user) -> list[str]:
+    return [
+        user_role.role.role_name
+        for user_role in user.user_roles
+        if user_role.role
+    ]
+
+
+def _create_tokens(db, user, active_role: str | None = None):
+    user = get_user_with_roles(db, user.id)
+    roles = _user_role_names(user)
+    if active_role and active_role not in roles:
+        raise Exception("Active role is not assigned to this user")
+    if not active_role and roles:
+        active_role = roles[0]
+
+    token_data = {
+        "sub": str(user.id),
+        "active_role": active_role,
+        "roles": roles,
+        # Backward-compatible alias. Frontends should prefer active_role.
+        "role": active_role,
+    }
 
     access_token = create_access_token(token_data)
-    refresh_token, jti = create_refresh_token({"sub": str(user.id)})
+    refresh_token, jti = create_refresh_token(token_data)
 
     save_refresh_token(
         db,

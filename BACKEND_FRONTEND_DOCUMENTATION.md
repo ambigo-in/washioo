@@ -73,6 +73,23 @@ Tokens are returned by role-specific signup/signin and refresh APIs.
 
 Refresh tokens rotate. After calling `/washioo-api/auth/refresh-token`, replace both stored tokens on the frontend.
 
+Decoded JWTs contain both the current account mode and all roles assigned to the user:
+
+```json
+{
+  "sub": "user-uuid",
+  "active_role": "cleaner",
+  "roles": ["customer", "cleaner"],
+  "role": "cleaner",
+  "type": "access",
+  "exp": 1710000000,
+  "iat": 1709999100,
+  "jti": "token-uuid"
+}
+```
+
+Use `active_role` for the current dashboard/mode and `roles` for account-switch UI. `role` is only a backward-compatible alias for `active_role`.
+
 ## Phone Numbers
 
 Every request body field named `phone_number` or `phone` must be a 10-digit Indian mobile number:
@@ -93,7 +110,7 @@ cleaner
 admin
 ```
 
-Frontend should route by the API used for login plus the returned `account_type`.
+Frontend should route by the API used for login plus the returned `account_type` or decoded `active_role`.
 
 Recommended routing:
 
@@ -110,6 +127,8 @@ GET /washioo-api/auth/me
 ```
 
 to get the authenticated user's roles.
+
+If a user owns multiple roles, for example both `customer` and `cleaner`, signing in through `/auth/cleaner/signin` returns `active_role: "cleaner"` and `roles: ["customer", "cleaner"]`. Signing in through `/auth/customer/signin` returns `active_role: "customer"` with the same `roles` list.
 
 ## Important Production Rules
 
@@ -329,6 +348,8 @@ Some address list/create responses may omit latitude and longitude.
   "updated_at": "2026-05-02T10:00:00"
 }
 ```
+
+The `access_token` and `refresh_token` both preserve the same `active_role` and `roles` claims. On refresh, the backend recomputes `roles` from the database and keeps the previous `active_role` if it is still assigned to the user.
 
 Allowed `vehicle_type` values:
 

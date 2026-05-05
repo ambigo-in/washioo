@@ -549,7 +549,7 @@ User Phone
 User ID + Phone
     │
     ├─ Create payload
-    │   └─ {user_id, phone, type: "access/refresh", exp}
+    │   └─ {sub, active_role, roles, type: "access/refresh", exp, iat, jti}
     │
     ├─ Sign with HMAC-SHA256 using SECRET_KEY
     │
@@ -565,7 +565,7 @@ User ID + Phone
 ```
 Initial Login
     │
-    ├─ access_token (30 min)
+    ├─ access_token (15 min)
     └─ refresh_token (7 days) → hash stored in DB
 
 Access Token Expires

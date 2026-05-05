@@ -168,6 +168,23 @@ Create a new user account (for new users only).
 }
 ```
 
+Decoded access and refresh JWTs include the selected account mode and all assigned roles:
+
+```json
+{
+  "sub": "user-uuid",
+  "active_role": "customer",
+  "roles": ["customer", "cleaner"],
+  "role": "customer",
+  "type": "access",
+  "exp": 1710000000,
+  "iat": 1709999100,
+  "jti": "token-uuid"
+}
+```
+
+Use `active_role` as the current session mode. Use `roles` to know every account role the user owns. `role` is kept only as a backward-compatible alias for `active_role`.
+
 **Rate Limit:** 5 attempts per 15 minutes
 
 ---
@@ -330,11 +347,13 @@ User clicks logout
 
 ### JWT Security
 
-- ✅ Access tokens: 30 minutes (short-lived)
+- ✅ Access tokens: 15 minutes (short-lived)
 - ✅ Refresh tokens: 7 days (long-lived)
 - ✅ Token rotation on refresh
 - ✅ Hashed token storage in database
 - ✅ Token revocation support
+- ✅ JWT `type`, `iat`, and `jti` claims
+- ✅ `active_role` plus full `roles` claim for multi-role accounts
 - ✅ HMAC-SHA256 algorithm
 
 ### Rate Limiting

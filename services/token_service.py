@@ -18,6 +18,8 @@ def refresh_user_token(db, refresh_token: str):
     payload = decode_token(refresh_token)
     if not payload:
         raise Exception("Invalid or malformed refresh token")
+    if payload.get("type") != "refresh":
+        raise Exception("Invalid token type")
 
     user_id = payload.get("sub")
     if not user_id:
@@ -35,12 +37,26 @@ def refresh_user_token(db, refresh_token: str):
     if not user or not user.is_active:
         raise Exception("User not found or inactive")
 
+    active_role = payload.get("active_role") or payload.get("role")
+    roles = [user_role.role.role_name for user_role in user.user_roles if user_role.role]
+    if active_role not in roles:
+        if not roles:
+            raise Exception("User has no active role")
+        active_role = roles[0]
+
     # Revoke old token
     revoke_token(db, valid_token.jti)
 
     # Create new tokens
-    new_access = create_access_token({"sub": user_id})
-    new_refresh_token, new_jti = create_refresh_token({"sub": user_id})
+    token_data = {
+        "sub": user_id,
+        "active_role": active_role,
+        "roles": roles,
+        # Backward-compatible alias. Frontends should prefer active_role.
+        "role": active_role,
+    }
+    new_access = create_access_token(token_data)
+    new_refresh_token, new_jti = create_refresh_token(token_data)
 
     # Save new refresh token with hashing
     save_refresh_token(
