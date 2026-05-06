@@ -115,7 +115,7 @@ Common status codes:
 
 ### RoleSignupRequest
 
-Used by customer signup APIs. The role is taken from the endpoint path.
+Used by customer signup APIs. The role is taken from the endpoint path. Email is optional.
 
 ```json
 {
@@ -128,7 +128,7 @@ Used by customer signup APIs. The role is taken from the endpoint path.
 
 ### CleanerSignupRequest
 
-Used by cleaner signup APIs. Aadhaar number is required; driving license number is optional.
+Used by cleaner signup APIs. Aadhaar number is required; email and driving license number are optional.
 
 ```json
 {

@@ -58,6 +58,12 @@ def _verify_signup_otp(db, payload):
         raise Exception("Invalid OTP")
 
 
+def _get_user_by_signup_email(db, email):
+    if not email:
+        return None
+    return get_user_by_email(db, email)
+
+
 def _cleaner_profile_data_from_signup(payload):
     if not getattr(payload, "aadhaar_number", None):
         raise Exception("Aadhaar number is required for cleaner signup")
@@ -83,7 +89,7 @@ def signup_user_for_role(db, payload, role_name: str, cleaner_profile_data: dict
     if existing_user:
         if not existing_user.is_active:
             raise Exception("User account is inactive")
-        user_with_email = get_user_by_email(db, payload.email)
+        user_with_email = _get_user_by_signup_email(db, payload.email)
         if user_with_email and user_with_email.id != existing_user.id:
             raise Exception("Email already in use")
 
@@ -95,7 +101,7 @@ def signup_user_for_role(db, payload, role_name: str, cleaner_profile_data: dict
         assign_role_to_user(db, existing_user.id, role.id)
         user = existing_user
     else:
-        user_with_email = get_user_by_email(db, payload.email)
+        user_with_email = _get_user_by_signup_email(db, payload.email)
         if user_with_email:
             raise Exception("Email already in use")
 

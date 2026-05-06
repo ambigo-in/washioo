@@ -12,6 +12,7 @@ It reflects the latest production-oriented backend changes:
 - Generic `/washioo-api/auth/send-otp`, `/washioo-api/auth/signup`, and `/washioo-api/auth/signin` are disabled.
 - First admin is created by Flyway SQL migration.
 - Existing admins can create or update other admins through protected APIs.
+- Customer and cleaner signup accept email as optional.
 - Cleaner signup requires Aadhaar number and optionally accepts driving license number.
 - Aadhaar and driving license are returned in full only on admin cleaner management APIs for approval verification; all other responses use masked values and boolean flags.
 - Booking status changes are controlled by lifecycle APIs, not arbitrary admin status patches.
@@ -171,6 +172,7 @@ Cleaner signup requires:
 
 Cleaner signup optionally accepts:
 
+- `email`
 - `driving_license_number`
 
 Frontend must expect full Aadhaar/license values only on admin cleaner management responses. Cleaner-facing responses return masked values only.
@@ -634,6 +636,8 @@ The path `booking_id` and body `booking_id` must match. Ratings must be between 
 
 ### Customer Signup
 
+Email may be omitted or sent as `null`/blank.
+
 1. Frontend calls:
 
 ```http
@@ -703,7 +707,7 @@ Request:
 
 ### Cleaner Signup
 
-Cleaner signup requires Aadhaar.
+Cleaner signup requires Aadhaar. Email may be omitted or sent as `null`/blank.
 
 1. Send OTP:
 

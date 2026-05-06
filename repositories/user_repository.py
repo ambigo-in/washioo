@@ -10,6 +10,8 @@ def get_user_by_phone(db, phone):
 
 def get_user_by_email(db, email):
     from models.user import User
+    if not email:
+        return None
     return db.query(User).filter(User.email == email).first()
 
 def create_user(db, user_data):

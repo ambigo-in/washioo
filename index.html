@@ -1105,7 +1105,7 @@
           <input type="tel" id="signupPhone" inputmode="numeric" maxlength="10" pattern="[6-9][0-9]{9}" placeholder="Enter 10-digit mobile number">
         </div>
         <div class="form-group">
-          <label>Email Address</label>
+          <label>Email Address (optional)</label>
           <input type="email" id="signupEmail" placeholder="arjun@email.com">
         </div>
       </div>
@@ -1248,11 +1248,12 @@ function handleSignUp() {
   const pass = document.getElementById('signupPass').value;
   const passConf = document.getElementById('signupPassConf').value;
   const tos = document.getElementById('tos').checked;
-  if(!name || !email || !pass) { showToast('⚠️ Please fill all required fields'); return; }
+  if(!name || !pass) { showToast('⚠️ Please fill all required fields'); return; }
+  if(email && !email.includes('@')) { showToast('⚠️ Enter a valid email address'); return; }
   if(!isValidPhone(phone)) { showToast(phoneErrorMessage); return; }
   if(pass !== passConf) { showToast('⚠️ Passwords do not match'); return; }
   if(!tos) { showToast('⚠️ Please accept the Terms of Service'); return; }
-  currentUser = { name, email };
+  currentUser = { name, email: email || phone + '@phone.in' };
   closeModal('signup');
   enterDashboard();
 }

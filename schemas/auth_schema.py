@@ -39,13 +39,22 @@ class LogoutRequest(BaseModel):
 class RoleSignupRequest(BaseModel):
     full_name: str
     phone_number: str
-    email: EmailStr
+    email: EmailStr | None = None
     otp_code: str
 
     @field_validator("phone_number")
     @classmethod
     def validate_phone_number(cls, value: str) -> str:
         return validate_indian_mobile(value)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_optional_email(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
 class CleanerSignupRequest(RoleSignupRequest):
     aadhaar_number: str = Field(..., pattern=r"^\d{12}$")
