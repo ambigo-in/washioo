@@ -34,6 +34,12 @@ class Settings:
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
     CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"]'))
     CORS_CREDENTIALS = os.getenv("CORS_CREDENTIALS", "True").lower() == "true"
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+    WEB_PUSH_ENABLED = os.getenv("WEB_PUSH_ENABLED", "False").lower() == "true"
+    WEB_PUSH_VAPID_PRIVATE_KEY = os.getenv("WEB_PUSH_VAPID_PRIVATE_KEY")
+    WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY")
+    WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:support@washioo.local")
 
     def validate(self):
         missing = [
@@ -50,6 +56,17 @@ class Settings:
             raise RuntimeError("SECRET_KEY cannot use the production placeholder value")
         if self.ENVIRONMENT == "production" and self.CORS_CREDENTIALS and "*" in self.CORS_ORIGINS:
             raise RuntimeError("CORS_ORIGINS cannot contain '*' when credentials are enabled")
+        if self.WEB_PUSH_ENABLED:
+            web_push_missing = [
+                name for name in [
+                    "WEB_PUSH_VAPID_PRIVATE_KEY",
+                    "WEB_PUSH_VAPID_PUBLIC_KEY",
+                    "WEB_PUSH_VAPID_SUBJECT",
+                ]
+                if not getattr(self, name)
+            ]
+            if web_push_missing:
+                raise RuntimeError(f"Missing required Web Push settings: {', '.join(web_push_missing)}")
         if self.ENVIRONMENT == "production":
             sms_missing = [
                 name for name in ["SMS_COUNTRY_KEY", "SMS_COUNTRY_TOKEN"]

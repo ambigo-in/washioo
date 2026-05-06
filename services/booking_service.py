@@ -28,6 +28,16 @@ from repositories.customer_vehicle_repository import (
     update_vehicle,
 )
 from core.security import hash_identifier, mask_identifier
+from services.notification_service import (
+    notify_cleaner_booking_assigned,
+    notify_customer_booking_accepted,
+    notify_customer_booking_rejected,
+    notify_admin_booking_assignment_accepted,
+    notify_admin_booking_assignment_rejected,
+)
+import logging
+
+logger = logging.getLogger(__name__)
 
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
 ASSIGNMENT_STATUSES = ["assigned", "accepted", "in_progress", "rejected", "completed", "cancelled"]
@@ -368,7 +378,13 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
         assignment = create_assignment(db, assignment_data)
 
     update_booking(db, booking_id, {"booking_status": "assigned"})
-    return get_assignment_by_id(db, assignment.id)
+    assignment = get_assignment_by_id(db, assignment.id)
+    try:
+        if assignment.cleaner and assignment.cleaner.user_id:
+            notify_cleaner_booking_assigned(db, assignment.cleaner.user_id, assignment)
+    except Exception as exc:
+        logger.warning("Failed to notify cleaner for assignment %s: %s", assignment.id, exc)
+    return assignment
 
 def list_cleaner_assignments_service(db, user_id, status=None, limit=50, offset=0):
     cleaner = get_or_create_cleaner_profile_service(db, user_id)
@@ -402,6 +418,15 @@ def accept_assignment_service(db, user_id, assignment_id, payload):
     })
     update_booking(db, assignment.booking_id, {"booking_status": "accepted"})
     update_cleaner_profile(db, assignment.cleaner_id, {"availability_status": "busy"})
+
+    try:
+        booking = get_booking_by_id(db, assignment.booking_id)
+        if booking:
+            notify_customer_booking_accepted(db, booking)
+        notify_admin_booking_assignment_accepted(db, assignment)
+    except Exception as exc:
+        logger.warning("Failed to send accept notifications for assignment %s: %s", assignment_id, exc)
+
     return get_assignment_by_id(db, assignment_id)
 
 def reject_assignment_service(db, user_id, assignment_id, payload):
@@ -415,6 +440,15 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
     })
     update_booking(db, assignment.booking_id, {"booking_status": "pending"})
     update_cleaner_profile(db, assignment.cleaner_id, {"availability_status": "available"})
+
+    try:
+        booking = get_booking_by_id(db, assignment.booking_id)
+        if booking:
+            notify_customer_booking_rejected(db, booking)
+        notify_admin_booking_assignment_rejected(db, assignment)
+    except Exception as exc:
+        logger.warning("Failed to send reject notifications for assignment %s: %s", assignment_id, exc)
+
     return get_assignment_by_id(db, assignment_id)
 
 def start_assignment_service(db, user_id, assignment_id, payload):

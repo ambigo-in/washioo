@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -16,6 +16,11 @@ from services.booking_service import (
     format_customer_vehicle,
     list_customer_vehicles_service,
     update_customer_vehicle_service,
+)
+from services.notification_service import (
+    format_notification,
+    list_user_notifications_service,
+    mark_user_notification_read_service,
 )
 
 router = APIRouter(prefix="/customer", tags=["Customer APIs"])
@@ -104,3 +109,42 @@ def delete_customer_vehicle(
         }
     except Exception:
         raise HTTPException(status_code=404, detail="Vehicle not found")
+
+
+@router.get("/notifications")
+def list_customer_notifications(
+    unread_only: bool = Query(False),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"])),
+):
+    notifications = list_user_notifications_service(
+        db,
+        current_user.id,
+        unread_only=unread_only,
+        limit=limit,
+        offset=offset,
+    )
+    notification_list = [format_notification(notification) for notification in notifications]
+    return {
+        "message": "Notifications fetched successfully",
+        "notifications": notification_list,
+        "total": len(notification_list),
+    }
+
+
+@router.patch("/notifications/{notification_id}/read")
+def mark_customer_notification_read(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["customer"])),
+):
+    try:
+        notification = mark_user_notification_read_service(db, current_user.id, notification_id)
+        return {
+            "message": "Notification marked as read",
+            "notification": format_notification(notification),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail="Notification not found")

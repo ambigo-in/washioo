@@ -50,6 +50,8 @@ V9__add_bidirectional_ratings.sql
 V10__deployment_indexes.sql
 V11__add_customer_vehicles.sql
 V12__soft_delete_addresses.sql
+V13__performance_indexes.sql
+V14__web_push_notifications.sql
 ```
 
 ## Phone Number Format
@@ -82,15 +84,15 @@ In production, unexpected server errors return generic messages. Detailed except
 
 Common status codes:
 
-| Status | Meaning |
-| --- | --- |
-| `400` | Invalid request or business validation failed |
-| `401` | Missing, invalid, or expired bearer token |
-| `403` | Authenticated user does not have the required role |
-| `404` | Requested entity was not found |
-| `410` | Deprecated endpoint disabled |
-| `422` | Request validation failed |
-| `429` | Rate limit exceeded |
+| Status | Meaning                                            |
+| ------ | -------------------------------------------------- |
+| `400`  | Invalid request or business validation failed      |
+| `401`  | Missing, invalid, or expired bearer token          |
+| `403`  | Authenticated user does not have the required role |
+| `404`  | Requested entity was not found                     |
+| `410`  | Deprecated endpoint disabled                       |
+| `422`  | Request validation failed                          |
+| `429`  | Rate limit exceeded                                |
 
 ## Request Entities
 
@@ -633,36 +635,36 @@ Returned when a customer creates a new booking.
 
 ## Public APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `GET` | `/washioo-api/` | None | `{ "success": true, "message": "Car Wash Service Portal API Running Successfully" }` | Public |
-| `GET` | `/washioo-api/health` | None | `{ "status": "healthy", "database": "connected", "version": "1.0.0" }` | Public |
-| `GET` | `/washioo-api/services/` | None | `{ "message": "Services fetched successfully", "services": [ServiceCategory], "total": 0 }` | Public |
-| `GET` | `/washioo-api/services/service-categories/{service_id}` | Path: `service_id` | `{ "message": "Service fetched successfully", "service": ServiceCategory }` | Public |
+| Method | Endpoint                                                | Request            | Success Response                                                                            | Authorization |
+| ------ | ------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------- | ------------- |
+| `GET`  | `/washioo-api/`                                         | None               | `{ "success": true, "message": "Car Wash Service Portal API Running Successfully" }`        | Public        |
+| `GET`  | `/washioo-api/health`                                   | None               | `{ "status": "healthy", "database": "connected", "version": "1.0.0" }`                      | Public        |
+| `GET`  | `/washioo-api/services/`                                | None               | `{ "message": "Services fetched successfully", "services": [ServiceCategory], "total": 0 }` | Public        |
+| `GET`  | `/washioo-api/services/service-categories/{service_id}` | Path: `service_id` | `{ "message": "Service fetched successfully", "service": ServiceCategory }`                 | Public        |
 
 ## Auth APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/auth/send-otp` | None | `410 Gone` | Deprecated; use role-specific OTP endpoints |
-| `POST` | `/washioo-api/auth/signup` | None | `410 Gone` | Deprecated; use role-specific signup endpoints |
-| `POST` | `/washioo-api/auth/signin` | None | `410 Gone` | Deprecated; use role-specific signin endpoints |
-| `POST` | `/washioo-api/auth/customer/send-otp` | `SendOTPRequest` | `{ "message": "Customer OTP sent successfully" }` | Public |
-| `POST` | `/washioo-api/auth/customer/signup` | `RoleSignupRequest` | `TokenResponse` plus `account_type` and `user` | Public |
-| `POST` | `/washioo-api/auth/customer/signin` | `SigninRequest` | `TokenResponse` plus `account_type` and `user` | Public |
-| `POST` | `/washioo-api/auth/cleaner/send-otp` | `SendOTPRequest` | `{ "message": "Cleaner OTP sent successfully" }` | Public |
-| `POST` | `/washioo-api/auth/cleaner/signup` | `CleanerSignupRequest` | `TokenResponse` plus `account_type`, `user`, and `cleaner` | Public |
-| `POST` | `/washioo-api/auth/cleaner/signin` | `SigninRequest` | `TokenResponse` plus `account_type`, `user`, and `cleaner` | Public |
-| `POST` | `/washioo-api/auth/admin/send-otp` | `SendOTPRequest` | `{ "message": "Admin OTP sent successfully" }` | Public, only existing admin phones receive OTP |
-| `POST` | `/washioo-api/auth/admin/signin` | `SigninRequest` | `TokenResponse` plus `account_type` and `user` | Public, only existing admin accounts |
-| `POST` | `/washioo-api/auth/admin/create` | `CreateAdminRequest` | `{ "message": "Admin account created successfully", "admin": User }` | Bearer token, role: `admin` |
-| `PATCH` | `/washioo-api/auth/admin/{admin_id}` | `UpdateUserRequest` | `{ "message": "Admin account updated successfully", "admin": User }` | Bearer token, role: `admin` |
-| `POST` | `/washioo-api/auth/refresh-token` | `RefreshTokenRequest` | `{ "access_token": "string", "refresh_token": "string", "token_type": "bearer" }` | Public |
-| `POST` | `/washioo-api/auth/logout` | `LogoutRequest` | `{ "message": "Logged out successfully" }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
-| `GET` | `/washioo-api/auth/me` | None | `{ "message": "User details fetched successfully", "user": User }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
-| `GET` | `/washioo-api/auth/admin/dashboard` | None | `{ "message": "Welcome Admin", "admin_id": "string", "roles": ["admin"] }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/auth/cleaner/jobs` | None | `{ "message": "Cleaner jobs fetched successfully", "assignments": [Assignment], "total": 0 }` | Bearer token, role: `cleaner` |
-| `GET` | `/washioo-api/auth/customer/bookings` | None | `{ "message": "Customer bookings fetched successfully", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `customer` |
+| Method  | Endpoint                              | Request                | Success Response                                                                                     | Authorization                                       |
+| ------- | ------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `POST`  | `/washioo-api/auth/send-otp`          | None                   | `410 Gone`                                                                                           | Deprecated; use role-specific OTP endpoints         |
+| `POST`  | `/washioo-api/auth/signup`            | None                   | `410 Gone`                                                                                           | Deprecated; use role-specific signup endpoints      |
+| `POST`  | `/washioo-api/auth/signin`            | None                   | `410 Gone`                                                                                           | Deprecated; use role-specific signin endpoints      |
+| `POST`  | `/washioo-api/auth/customer/send-otp` | `SendOTPRequest`       | `{ "message": "Customer OTP sent successfully" }`                                                    | Public                                              |
+| `POST`  | `/washioo-api/auth/customer/signup`   | `RoleSignupRequest`    | `TokenResponse` plus `account_type` and `user`                                                       | Public                                              |
+| `POST`  | `/washioo-api/auth/customer/signin`   | `SigninRequest`        | `TokenResponse` plus `account_type` and `user`                                                       | Public                                              |
+| `POST`  | `/washioo-api/auth/cleaner/send-otp`  | `SendOTPRequest`       | `{ "message": "Cleaner OTP sent successfully" }`                                                     | Public                                              |
+| `POST`  | `/washioo-api/auth/cleaner/signup`    | `CleanerSignupRequest` | `TokenResponse` plus `account_type`, `user`, and `cleaner`                                           | Public                                              |
+| `POST`  | `/washioo-api/auth/cleaner/signin`    | `SigninRequest`        | `TokenResponse` plus `account_type`, `user`, and `cleaner`                                           | Public                                              |
+| `POST`  | `/washioo-api/auth/admin/send-otp`    | `SendOTPRequest`       | `{ "message": "Admin OTP sent successfully" }`                                                       | Public, only existing admin phones receive OTP      |
+| `POST`  | `/washioo-api/auth/admin/signin`      | `SigninRequest`        | `TokenResponse` plus `account_type` and `user`                                                       | Public, only existing admin accounts                |
+| `POST`  | `/washioo-api/auth/admin/create`      | `CreateAdminRequest`   | `{ "message": "Admin account created successfully", "admin": User }`                                 | Bearer token, role: `admin`                         |
+| `PATCH` | `/washioo-api/auth/admin/{admin_id}`  | `UpdateUserRequest`    | `{ "message": "Admin account updated successfully", "admin": User }`                                 | Bearer token, role: `admin`                         |
+| `POST`  | `/washioo-api/auth/refresh-token`     | `RefreshTokenRequest`  | `{ "access_token": "string", "refresh_token": "string", "token_type": "bearer" }`                    | Public                                              |
+| `POST`  | `/washioo-api/auth/logout`            | `LogoutRequest`        | `{ "message": "Logged out successfully" }`                                                           | Bearer token, roles: `customer`, `cleaner`, `admin` |
+| `GET`   | `/washioo-api/auth/me`                | None                   | `{ "message": "User details fetched successfully", "user": User }`                                   | Bearer token, roles: `customer`, `cleaner`, `admin` |
+| `GET`   | `/washioo-api/auth/admin/dashboard`   | None                   | `{ "message": "Welcome Admin", "admin_id": "string", "roles": ["admin"] }`                           | Bearer token, role: `admin`                         |
+| `GET`   | `/washioo-api/auth/cleaner/jobs`      | None                   | `{ "message": "Cleaner jobs fetched successfully", "assignments": [Assignment], "total": 0 }`        | Bearer token, role: `cleaner`                       |
+| `GET`   | `/washioo-api/auth/customer/bookings` | None                   | `{ "message": "Customer bookings fetched successfully", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `customer`                      |
 
 The generic `/washioo-api/auth/send-otp`, `/washioo-api/auth/signup`, and `/washioo-api/auth/signin` APIs are disabled in production-facing flows.
 
@@ -755,131 +757,189 @@ Existing cleaner records created before this change may contain only masked valu
 
 ## User APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `GET` | `/washioo-api/users/me` | None | `{ "message": "Current user profile fetched successfully", "user": User }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
-| `PATCH` | `/washioo-api/users/me` | `UpdateUserRequest` | `{ "message": "Profile updated successfully", "user": User }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
-| `GET` | `/washioo-api/users/?role={role}` | Optional query: `role` | `{ "message": "Users fetched successfully", "users": [User], "total": 0 }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/users/{user_id}` | Path: `user_id` | `{ "message": "User fetched successfully", "user": User }` | Bearer token, role: `admin` |
-| `PUT` | `/washioo-api/users/{user_id}` | Path: `user_id`, body: `UpdateUserRequest` | `{ "message": "User updated successfully", "user": User }` | Bearer token, role: `admin` |
-| `DELETE` | `/washioo-api/users/{user_id}` | Path: `user_id` | `{ "message": "User deleted successfully" }` | Bearer token, role: `admin` |
+| Method   | Endpoint                          | Request                                    | Success Response                                                           | Authorization                                       |
+| -------- | --------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------- |
+| `GET`    | `/washioo-api/users/me`           | None                                       | `{ "message": "Current user profile fetched successfully", "user": User }` | Bearer token, roles: `customer`, `cleaner`, `admin` |
+| `PATCH`  | `/washioo-api/users/me`           | `UpdateUserRequest`                        | `{ "message": "Profile updated successfully", "user": User }`              | Bearer token, roles: `customer`, `cleaner`, `admin` |
+| `GET`    | `/washioo-api/users/?role={role}` | Optional query: `role`                     | `{ "message": "Users fetched successfully", "users": [User], "total": 0 }` | Bearer token, role: `admin`                         |
+| `GET`    | `/washioo-api/users/{user_id}`    | Path: `user_id`                            | `{ "message": "User fetched successfully", "user": User }`                 | Bearer token, role: `admin`                         |
+| `PUT`    | `/washioo-api/users/{user_id}`    | Path: `user_id`, body: `UpdateUserRequest` | `{ "message": "User updated successfully", "user": User }`                 | Bearer token, role: `admin`                         |
+| `DELETE` | `/washioo-api/users/{user_id}`    | Path: `user_id`                            | `{ "message": "User deleted successfully" }`                               | Bearer token, role: `admin`                         |
 
 ## Customer Vehicle APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `GET` | `/washioo-api/customer/vehicles` | None | `{ "message": "Vehicles fetched successfully", "vehicles": [CustomerVehicle], "total": 0 }` | Bearer token, role: `customer` |
-| `POST` | `/washioo-api/customer/vehicles` | `CreateCustomerVehicleRequest` | `{ "message": "Vehicle created successfully", "vehicle": CustomerVehicle }` | Bearer token, role: `customer` |
-| `PATCH` | `/washioo-api/customer/vehicles/{vehicle_id}` | `UpdateCustomerVehicleRequest` | `{ "message": "Vehicle updated successfully", "vehicle": CustomerVehicle }` | Bearer token, role: `customer` |
-| `DELETE` | `/washioo-api/customer/vehicles/{vehicle_id}` | None | `{ "message": "Vehicle deleted successfully", "vehicle_id": "string" }` | Bearer token, role: `customer` |
+| Method   | Endpoint                                      | Request                        | Success Response                                                                            | Authorization                  |
+| -------- | --------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------ |
+| `GET`    | `/washioo-api/customer/vehicles`              | None                           | `{ "message": "Vehicles fetched successfully", "vehicles": [CustomerVehicle], "total": 0 }` | Bearer token, role: `customer` |
+| `POST`   | `/washioo-api/customer/vehicles`              | `CreateCustomerVehicleRequest` | `{ "message": "Vehicle created successfully", "vehicle": CustomerVehicle }`                 | Bearer token, role: `customer` |
+| `PATCH`  | `/washioo-api/customer/vehicles/{vehicle_id}` | `UpdateCustomerVehicleRequest` | `{ "message": "Vehicle updated successfully", "vehicle": CustomerVehicle }`                 | Bearer token, role: `customer` |
+| `DELETE` | `/washioo-api/customer/vehicles/{vehicle_id}` | None                           | `{ "message": "Vehicle deleted successfully", "vehicle_id": "string" }`                     | Bearer token, role: `customer` |
 
 If `is_default=true`, backend makes the customer's other vehicles non-default. Booking create/update can send `vehicle_id`; if omitted, booking create uses the default vehicle when available.
 
 ## Service Category Admin APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/services/admin/service-categories` | `CreateServiceRequest` | `{ "message": "Service created successfully", "service": ServiceCategory }` | Bearer token, role: `admin` |
-| `PATCH` | `/washioo-api/services/admin/service-categories/{service_id}` | Path: `service_id`, body: `UpdateServiceRequest` | `{ "message": "Service updated successfully", "service": ServiceCategory }` | Bearer token, role: `admin` |
-| `DELETE` | `/washioo-api/services/admin/service-categories/{service_id}` | Path: `service_id` | `{ "message": "Service deactivated successfully", "service_id": "string" }` | Bearer token, role: `admin` |
+| Method   | Endpoint                                                      | Request                                          | Success Response                                                            | Authorization               |
+| -------- | ------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- | --------------------------- |
+| `POST`   | `/washioo-api/services/admin/service-categories`              | `CreateServiceRequest`                           | `{ "message": "Service created successfully", "service": ServiceCategory }` | Bearer token, role: `admin` |
+| `PATCH`  | `/washioo-api/services/admin/service-categories/{service_id}` | Path: `service_id`, body: `UpdateServiceRequest` | `{ "message": "Service updated successfully", "service": ServiceCategory }` | Bearer token, role: `admin` |
+| `DELETE` | `/washioo-api/services/admin/service-categories/{service_id}` | Path: `service_id`                               | `{ "message": "Service deactivated successfully", "service_id": "string" }` | Bearer token, role: `admin` |
 
 ## Address APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/services/address` | `CreateAddressRequest` | `{ "message": "Address created successfully", "address": Address }` | Bearer token, role: `customer` |
-| `GET` | `/washioo-api/services/addresses` | None | `{ "message": "Addresses fetched successfully", "addresses": [Address], "total": 0 }` | Bearer token, role: `customer` |
-| `PATCH` | `/washioo-api/services/address/{address_id}` | Path: `address_id`, body: `UpdateAddressRequest` | `{ "message": "Address updated successfully", "address": Address }` | Bearer token, role: `customer` |
-| `DELETE` | `/washioo-api/services/address/{address_id}` | Path: `address_id` | `{ "message": "Address removed successfully", "address_id": "string", "deletion_type": "soft_deleted \| hard_deleted" }` | Bearer token, role: `customer` |
+| Method   | Endpoint                                     | Request                                          | Success Response                                                                                                         | Authorization                  |
+| -------- | -------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| `POST`   | `/washioo-api/services/address`              | `CreateAddressRequest`                           | `{ "message": "Address created successfully", "address": Address }`                                                      | Bearer token, role: `customer` |
+| `GET`    | `/washioo-api/services/addresses`            | None                                             | `{ "message": "Addresses fetched successfully", "addresses": [Address], "total": 0 }`                                    | Bearer token, role: `customer` |
+| `PATCH`  | `/washioo-api/services/address/{address_id}` | Path: `address_id`, body: `UpdateAddressRequest` | `{ "message": "Address updated successfully", "address": Address }`                                                      | Bearer token, role: `customer` |
+| `DELETE` | `/washioo-api/services/address/{address_id}` | Path: `address_id`                               | `{ "message": "Address removed successfully", "address_id": "string", "deletion_type": "soft_deleted \| hard_deleted" }` | Bearer token, role: `customer` |
 
 Address removal is history-safe. If the address has no bookings, the backend hard deletes it. If bookings reference it, the backend soft deletes it with `is_deleted=true`, clears `is_default`, and hides it from future address lists while preserving booking history.
 
 ## Customer Booking APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/services/book` | `CreateBookingRequest` | `{ "message": "Booking created successfully", "booking": CreatedBooking }` | Bearer token, role: `customer` |
-| `GET` | `/washioo-api/services/my-bookings` | None | `{ "message": "Bookings fetched successfully", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `customer` |
-| `GET` | `/washioo-api/services/my-bookings/{booking_id}` | Path: `booking_id` | `{ "message": "Booking fetched successfully", "booking": CustomerBooking }` | Bearer token, role: `customer` |
-| `PATCH` | `/washioo-api/services/my-bookings/{booking_id}` | Path: `booking_id`, body: `UpdateBookingRequest` | `{ "message": "Booking updated successfully", "booking": CustomerBooking }` | Bearer token, role: `customer` |
-| `POST` | `/washioo-api/services/my-bookings/{booking_id}/cancel` | Path: `booking_id`, body: `CancelBookingRequest` | `{ "message": "Booking cancelled successfully", "booking": CustomerBooking }` | Bearer token, role: `customer` |
+| Method  | Endpoint                                                | Request                                          | Success Response                                                                            | Authorization                  |
+| ------- | ------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------ |
+| `POST`  | `/washioo-api/services/book`                            | `CreateBookingRequest`                           | `{ "message": "Booking created successfully", "booking": CreatedBooking }`                  | Bearer token, role: `customer` |
+| `GET`   | `/washioo-api/services/my-bookings`                     | None                                             | `{ "message": "Bookings fetched successfully", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `customer` |
+| `GET`   | `/washioo-api/services/my-bookings/{booking_id}`        | Path: `booking_id`                               | `{ "message": "Booking fetched successfully", "booking": CustomerBooking }`                 | Bearer token, role: `customer` |
+| `PATCH` | `/washioo-api/services/my-bookings/{booking_id}`        | Path: `booking_id`, body: `UpdateBookingRequest` | `{ "message": "Booking updated successfully", "booking": CustomerBooking }`                 | Bearer token, role: `customer` |
+| `POST`  | `/washioo-api/services/my-bookings/{booking_id}/cancel` | Path: `booking_id`, body: `CancelBookingRequest` | `{ "message": "Booking cancelled successfully", "booking": CustomerBooking }`               | Bearer token, role: `customer` |
 
 ## Admin Booking APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `GET` | `/washioo-api/services/admin/all-bookings` | None | `{ "message": "All bookings fetched successfully", "bookings": [AdminBooking], "total": 0 }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/admin/bookings/{booking_id}` | Path: `booking_id` | `{ "message": "Booking fetched successfully", "booking": AdminBooking }` | Bearer token, role: `admin` |
-| `PATCH` | `/washioo-api/services/admin/bookings/{booking_id}` | Path: `booking_id`, body: `AdminUpdateBookingRequest` | `{ "message": "Booking updated successfully", "booking": AdminBooking }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/admin/customers/{customer_id}/bookings` | Path: `customer_id` | `{ "message": "Customer bookings fetched successfully", "customer_id": "string", "bookings": [CustomerBooking], "total": 0 }` | Bearer token, role: `admin` |
-| `POST` | `/washioo-api/services/admin/bookings/{booking_id}/assign` | Path: `booking_id`, body: `AssignBookingRequest` | `{ "message": "Booking assigned successfully", "assignment": Assignment }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/admin/bookings-by-status/{status}` | Path: `status` | `{ "message": "Bookings with status '<status>' fetched successfully", "status": "string", "bookings": [AdminBooking], "total": 0 }` | Bearer token, role: `admin` |
+| Method  | Endpoint                                                       | Request                                               | Success Response                                                                                                                    | Authorization               |
+| ------- | -------------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `GET`   | `/washioo-api/services/admin/all-bookings`                     | None                                                  | `{ "message": "All bookings fetched successfully", "bookings": [AdminBooking], "total": 0 }`                                        | Bearer token, role: `admin` |
+| `GET`   | `/washioo-api/services/admin/bookings/{booking_id}`            | Path: `booking_id`                                    | `{ "message": "Booking fetched successfully", "booking": AdminBooking }`                                                            | Bearer token, role: `admin` |
+| `PATCH` | `/washioo-api/services/admin/bookings/{booking_id}`            | Path: `booking_id`, body: `AdminUpdateBookingRequest` | `{ "message": "Booking updated successfully", "booking": AdminBooking }`                                                            | Bearer token, role: `admin` |
+| `GET`   | `/washioo-api/services/admin/customers/{customer_id}/bookings` | Path: `customer_id`                                   | `{ "message": "Customer bookings fetched successfully", "customer_id": "string", "bookings": [CustomerBooking], "total": 0 }`       | Bearer token, role: `admin` |
+| `POST`  | `/washioo-api/services/admin/bookings/{booking_id}/assign`     | Path: `booking_id`, body: `AssignBookingRequest`      | `{ "message": "Booking assigned successfully", "assignment": Assignment }`                                                          | Bearer token, role: `admin` |
+| `GET`   | `/washioo-api/services/admin/bookings-by-status/{status}`      | Path: `status`                                        | `{ "message": "Bookings with status '<status>' fetched successfully", "status": "string", "bookings": [AdminBooking], "total": 0 }` | Bearer token, role: `admin` |
 
 Valid `status` values: `pending`, `assigned`, `accepted`, `in_progress`, `completed`, `cancelled`.
 
 ## Cleaner Profile APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/services/admin/cleaners` | `CreateCleanerProfileRequest` | `{ "message": "Cleaner profile created successfully", "cleaner": CleanerProfile }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/admin/cleaners` | Optional query: `approval_status`, `availability_status` | `{ "message": "Cleaners fetched successfully", "cleaners": [CleanerProfile], "total": 0 }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id` | `{ "message": "Cleaner fetched successfully", "cleaner": CleanerProfile }` | Bearer token, role: `admin` |
-| `PATCH` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id`, body: `UpdateCleanerProfileRequest` | `{ "message": "Cleaner updated successfully", "cleaner": CleanerProfile }` | Bearer token, role: `admin` |
-| `DELETE` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id` | `{ "message": "Cleaner profile deleted successfully", "cleaner_id": "string" }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/cleaner/profile` | None | `{ "message": "Cleaner profile fetched successfully", "cleaner": CleanerProfile }` | Bearer token, role: `cleaner` |
-| `PATCH` | `/washioo-api/services/cleaner/availability` | `UpdateCleanerAvailabilityRequest` | `{ "message": "Availability updated successfully", "cleaner": CleanerProfile }` | Bearer token, role: `cleaner` |
+| Method   | Endpoint                                            | Request                                                  | Success Response                                                                           | Authorization                 |
+| -------- | --------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------- |
+| `POST`   | `/washioo-api/services/admin/cleaners`              | `CreateCleanerProfileRequest`                            | `{ "message": "Cleaner profile created successfully", "cleaner": CleanerProfile }`         | Bearer token, role: `admin`   |
+| `GET`    | `/washioo-api/services/admin/cleaners`              | Optional query: `approval_status`, `availability_status` | `{ "message": "Cleaners fetched successfully", "cleaners": [CleanerProfile], "total": 0 }` | Bearer token, role: `admin`   |
+| `GET`    | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id`                                       | `{ "message": "Cleaner fetched successfully", "cleaner": CleanerProfile }`                 | Bearer token, role: `admin`   |
+| `PATCH`  | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id`, body: `UpdateCleanerProfileRequest`  | `{ "message": "Cleaner updated successfully", "cleaner": CleanerProfile }`                 | Bearer token, role: `admin`   |
+| `DELETE` | `/washioo-api/services/admin/cleaners/{cleaner_id}` | Path: `cleaner_id`                                       | `{ "message": "Cleaner profile deleted successfully", "cleaner_id": "string" }`            | Bearer token, role: `admin`   |
+| `GET`    | `/washioo-api/services/cleaner/profile`             | None                                                     | `{ "message": "Cleaner profile fetched successfully", "cleaner": CleanerProfile }`         | Bearer token, role: `cleaner` |
+| `PATCH`  | `/washioo-api/services/cleaner/availability`        | `UpdateCleanerAvailabilityRequest`                       | `{ "message": "Availability updated successfully", "cleaner": CleanerProfile }`            | Bearer token, role: `cleaner` |
 
 ## Assignment APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `GET` | `/washioo-api/services/admin/assignments` | Optional query: `status` | `{ "message": "Assignments fetched successfully", "assignments": [Assignment], "total": 0 }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/services/cleaner/assignments` | Optional query: `status` | `{ "message": "Cleaner assignments fetched successfully", "assignments": [Assignment], "total": 0 }` | Bearer token, role: `cleaner` |
-| `GET` | `/washioo-api/services/cleaner/assignments/{assignment_id}` | Path: `assignment_id` | `{ "message": "Assignment fetched successfully", "assignment": Assignment }` | Bearer token, role: `cleaner` |
-| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/accept` | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment accepted successfully", "assignment": Assignment }` | Bearer token, role: `cleaner` |
-| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/reject` | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment rejected successfully", "assignment": Assignment }` | Bearer token, role: `cleaner` |
-| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/start` | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment started successfully", "assignment": Assignment }` | Bearer token, role: `cleaner` |
-| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/complete` | Path: `assignment_id`, body: `CompleteAssignmentRequest` | `{ "message": "Assignment completed successfully", "assignment": Assignment }` | Bearer token, role: `cleaner` |
+| Method | Endpoint                                                             | Request                                                       | Success Response                                                                                     | Authorization                 |
+| ------ | -------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `GET`  | `/washioo-api/services/admin/assignments`                            | Optional query: `status`                                      | `{ "message": "Assignments fetched successfully", "assignments": [Assignment], "total": 0 }`         | Bearer token, role: `admin`   |
+| `GET`  | `/washioo-api/services/cleaner/assignments`                          | Optional query: `status`                                      | `{ "message": "Cleaner assignments fetched successfully", "assignments": [Assignment], "total": 0 }` | Bearer token, role: `cleaner` |
+| `GET`  | `/washioo-api/services/cleaner/assignments/{assignment_id}`          | Path: `assignment_id`                                         | `{ "message": "Assignment fetched successfully", "assignment": Assignment }`                         | Bearer token, role: `cleaner` |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/accept`   | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment accepted successfully", "assignment": Assignment }`                        | Bearer token, role: `cleaner` |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/reject`   | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment rejected successfully", "assignment": Assignment }`                        | Bearer token, role: `cleaner` |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/start`    | Path: `assignment_id`, body: `CleanerAssignmentActionRequest` | `{ "message": "Assignment started successfully", "assignment": Assignment }`                         | Bearer token, role: `cleaner` |
+| `POST` | `/washioo-api/services/cleaner/assignments/{assignment_id}/complete` | Path: `assignment_id`, body: `CompleteAssignmentRequest`      | `{ "message": "Assignment completed successfully", "assignment": Assignment }`                       | Bearer token, role: `cleaner` |
+
+Notes:
+
+- `POST /washioo-api/services/cleaner/assignments/{assignment_id}/accept` updates the booking to `accepted` and records a customer notification of type `booking_accepted` plus an admin notification of type `booking_assignment_accepted`.
+- `POST /washioo-api/services/cleaner/assignments/{assignment_id}/reject` updates the booking back to `pending` and records a customer notification of type `booking_rejected` plus an admin notification of type `booking_assignment_rejected`.
+- Cleaner assignment actions still return the updated `assignment` object and preserve existing booking lifecycle rules.
 
 ## Standalone Customer/Cleaner APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `PATCH` | `/washioo-api/customer/addresses/{address_id}` | `UpdateAddressRequest` | `{ "message": "Address updated successfully", "address": Address }` | Bearer token, role: `customer` |
-| `GET` | `/washioo-api/cleaner/bookings/{booking_id}` | None | `{ "message": "Booking fetched successfully", "booking": AdminBooking }` | Bearer token, role: `cleaner`; assigned booking only |
+| Method   | Endpoint                                                                  | Request                            | Success Response                                                                                                     | Authorization                                        |
+| -------- | ------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `PATCH`  | `/washioo-api/customer/addresses/{address_id}`                            | `UpdateAddressRequest`             | `{ "message": "Address updated successfully", "address": Address }`                                                  | Bearer token, role: `customer`                       |
+| `GET`    | `/washioo-api/customer/notifications?unread_only=false&limit=50&offset=0` | Query params                       | `{ "message": "Notifications fetched successfully", "notifications": [Notification], "total": 0 }`                   | Bearer token, role: `customer`                       |
+| `PATCH`  | `/washioo-api/customer/notifications/{notification_id}/read`              | Path: `notification_id`            | `{ "message": "Notification marked as read", "notification": Notification }`                                         | Bearer token, role: `customer`                       |
+| `GET`    | `/washioo-api/cleaner/bookings/{booking_id}`                              | None                               | `{ "message": "Booking fetched successfully", "booking": AdminBooking }`                                             | Bearer token, role: `cleaner`; assigned booking only |
+| `GET`    | `/washioo-api/cleaner/push/public-key`                                    | None                               | `{ "message": "Web Push configuration fetched successfully", "web_push": { "enabled": true, "public_key": "..." } }` | Bearer token, role: `cleaner`                        |
+| `POST`   | `/washioo-api/cleaner/push/subscriptions`                                 | `WebPushSubscriptionRequest`       | `{ "message": "Push subscription saved successfully", "subscription": { "id": "uuid", "is_active": true } }`         | Bearer token, role: `cleaner`                        |
+| `DELETE` | `/washioo-api/cleaner/push/subscriptions`                                 | `DeleteWebPushSubscriptionRequest` | `{ "message": "Push subscription removed successfully" }`                                                            | Bearer token, role: `cleaner`                        |
+| `GET`    | `/washioo-api/cleaner/notifications?unread_only=false&limit=50&offset=0`  | Query params                       | `{ "message": "Notifications fetched successfully", "notifications": [Notification], "total": 0 }`                   | Bearer token, role: `cleaner`                        |
+| `PATCH`  | `/washioo-api/cleaner/notifications/{notification_id}/read`               | Path: `notification_id`            | `{ "message": "Notification marked as read", "notification": Notification }`                                         | Bearer token, role: `cleaner`                        |
 
 Note: `/washioo-api/customer/addresses/{address_id}` is a stricter standalone address update endpoint that requires verified coordinates. The `/washioo-api/services/address/{address_id}` endpoint is the normal customer address update API.
 
+When an admin assigns a booking through `/washioo-api/services/admin/bookings/{booking_id}/assign`, the backend creates a `booking_assigned` notification row for the cleaner user. If `WEB_PUSH_ENABLED=True` and the cleaner has active browser subscriptions, the backend also sends a Web Push browser notification. Push delivery errors do not fail the assignment API; expired subscriptions are deactivated.
+
+### WebPushSubscriptionRequest
+
+Send the browser `PushSubscription.toJSON()` payload:
+
+```json
+{
+  "endpoint": "https://push-service.example/subscription-id",
+  "expirationTime": null,
+  "keys": {
+    "p256dh": "browser_p256dh_key",
+    "auth": "browser_auth_secret"
+  }
+}
+```
+
+### DeleteWebPushSubscriptionRequest
+
+```json
+{
+  "endpoint": "https://push-service.example/subscription-id"
+}
+```
+
+### Notification
+
+```json
+{
+  "id": "notification_uuid",
+  "title": "New booking assigned",
+  "message": "You have been assigned a Car Wash booking for 2026-05-06 10:30:00",
+  "notification_type": "booking_assigned",
+  "is_read": false,
+  "created_at": "2026-05-06T10:00:00"
+}
+```
+
+Supported `notification_type` values for assignment flows:
+
+- `booking_assigned`
+- `booking_accepted`
+- `booking_rejected`
+- `booking_assignment_accepted`
+- `booking_assignment_rejected`
+
 ## Payment APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `PATCH` | `/washioo-api/bookings/{booking_id}/payment/collect` | `CleanerPaymentUpdateRequest` | `{ "message": "Payment collection recorded successfully", "payment": PaymentCollection }` | Bearer token, role: `cleaner` |
-| `PATCH` | `/washioo-api/admin/payments/{payment_id}/split` | `AdminPaymentSplitRequest` | `{ "message": "Payment split applied successfully", "payment": PaymentCollection }` | Bearer token, role: `admin` |
-| `PATCH` | `/washioo-api/admin/payments/{payment_id}/handover/collect` | None | `{ "message": "Admin share marked as collected successfully", "payment": PaymentCollection }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/admin/payments?status={status}&cleaner_handover_status={status}&limit=50&offset=0` | Query params | `{ "message": "Payments fetched successfully", "payments": [PaymentCollection], "total": 0 }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/cleaner/earnings` | None | `{ "message": "Cleaner earnings fetched successfully", "earnings": CleanerEarningsSummary }` | Bearer token, role: `cleaner` |
-| `GET` | `/washioo-api/customer/bookings/{booking_id}/payment-status` | None | `{ "message": "Payment status fetched successfully", "payment": CustomerPaymentStatus }` | Bearer token, role: `customer` |
-| `GET` | `/washioo-api/payments/stats` | None | `{ "message": "Payment statistics fetched successfully", "statistics": PaymentStats }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/payments/?status={status}&limit=50&offset=0` | Query params | `{ "message": "Payments fetched successfully", "payments": [Payment], ... }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/payments/customer/{customer_id}` | Query params | `{ "message": "Customer payments fetched successfully", "payments": [Payment] }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/payments/booking/{booking_id}` | None | `{ "message": "Booking payment fetched successfully", "payment": Payment }` | Bearer token, role: `admin` |
-| `GET` | `/washioo-api/payments/{payment_id}` | None | `{ "message": "Payment details fetched successfully", "payment": Payment }` | Bearer token, role: `admin` |
-| `PUT` | `/washioo-api/payments/{payment_id}` | `PaymentUpdateRequest` | `{ "message": "Payment updated successfully", "payment": Payment }` | Bearer token, role: `admin` |
-| `POST` | `/washioo-api/payments/{payment_id}/mark-paid` | Optional `transaction_reference` query | `{ "message": "Payment marked as paid successfully", "payment": Payment }` | Bearer token, role: `admin` |
-| `POST` | `/washioo-api/payments/{payment_id}/mark-failed` | None | `{ "message": "Payment marked as failed successfully", "payment": Payment }` | Bearer token, role: `admin` |
-| `DELETE` | `/washioo-api/payments/{payment_id}` | None | `{ "message": "Payment deleted successfully" }` | Bearer token, role: `admin`; pending payments only |
+| Method   | Endpoint                                                                                         | Request                                | Success Response                                                                              | Authorization                                      |
+| -------- | ------------------------------------------------------------------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `PATCH`  | `/washioo-api/bookings/{booking_id}/payment/collect`                                             | `CleanerPaymentUpdateRequest`          | `{ "message": "Payment collection recorded successfully", "payment": PaymentCollection }`     | Bearer token, role: `cleaner`                      |
+| `PATCH`  | `/washioo-api/admin/payments/{payment_id}/split`                                                 | `AdminPaymentSplitRequest`             | `{ "message": "Payment split applied successfully", "payment": PaymentCollection }`           | Bearer token, role: `admin`                        |
+| `PATCH`  | `/washioo-api/admin/payments/{payment_id}/handover/collect`                                      | None                                   | `{ "message": "Admin share marked as collected successfully", "payment": PaymentCollection }` | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/admin/payments?status={status}&cleaner_handover_status={status}&limit=50&offset=0` | Query params                           | `{ "message": "Payments fetched successfully", "payments": [PaymentCollection], "total": 0 }` | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/cleaner/earnings`                                                                  | None                                   | `{ "message": "Cleaner earnings fetched successfully", "earnings": CleanerEarningsSummary }`  | Bearer token, role: `cleaner`                      |
+| `GET`    | `/washioo-api/customer/bookings/{booking_id}/payment-status`                                     | None                                   | `{ "message": "Payment status fetched successfully", "payment": CustomerPaymentStatus }`      | Bearer token, role: `customer`                     |
+| `GET`    | `/washioo-api/payments/stats`                                                                    | None                                   | `{ "message": "Payment statistics fetched successfully", "statistics": PaymentStats }`        | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/payments/?status={status}&limit=50&offset=0`                                       | Query params                           | `{ "message": "Payments fetched successfully", "payments": [Payment], ... }`                  | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/payments/customer/{customer_id}`                                                   | Query params                           | `{ "message": "Customer payments fetched successfully", "payments": [Payment] }`              | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/payments/booking/{booking_id}`                                                     | None                                   | `{ "message": "Booking payment fetched successfully", "payment": Payment }`                   | Bearer token, role: `admin`                        |
+| `GET`    | `/washioo-api/payments/{payment_id}`                                                             | None                                   | `{ "message": "Payment details fetched successfully", "payment": Payment }`                   | Bearer token, role: `admin`                        |
+| `PUT`    | `/washioo-api/payments/{payment_id}`                                                             | `PaymentUpdateRequest`                 | `{ "message": "Payment updated successfully", "payment": Payment }`                           | Bearer token, role: `admin`                        |
+| `POST`   | `/washioo-api/payments/{payment_id}/mark-paid`                                                   | Optional `transaction_reference` query | `{ "message": "Payment marked as paid successfully", "payment": Payment }`                    | Bearer token, role: `admin`                        |
+| `POST`   | `/washioo-api/payments/{payment_id}/mark-failed`                                                 | None                                   | `{ "message": "Payment marked as failed successfully", "payment": Payment }`                  | Bearer token, role: `admin`                        |
+| `DELETE` | `/washioo-api/payments/{payment_id}`                                                             | None                                   | `{ "message": "Payment deleted successfully" }`                                               | Bearer token, role: `admin`; pending payments only |
 
 Collection `status` values: `pending_collection`, `collected`, `split_done`.
 Cleaner handover status values: `pending`, `settled`.
 
 ## Rating APIs
 
-| Method | Endpoint | Request | Success Response | Authorization |
-| --- | --- | --- | --- | --- |
-| `POST` | `/washioo-api/bookings/{booking_id}/ratings` | `RatingCreateRequest` | `RatingResponse` | Bearer token, role: `customer` or `cleaner`; completed bookings only |
-| `GET` | `/washioo-api/bookings/{booking_id}/ratings` | None | `[RatingResponse]` | Bearer token, any authenticated role; non-admin users must be booking members |
-| `GET` | `/washioo-api/cleaners/{cleaner_id}/ratings` | None | `CleanerRatingSummary` | Bearer token, role: `admin` or `customer` |
-| `GET` | `/washioo-api/customers/{customer_id}/ratings` | None | `CustomerRatingSummary` | Bearer token, role: `admin` or `cleaner` |
-| `GET` | `/washioo-api/admin/ratings?reviewer_role={role}&booking_id={booking_id}&page=1&limit=50` | Query params | `{ "ratings": [RatingResponse], "total": 0, "page": 1, "limit": 50 }` | Bearer token, role: `admin` |
-
+| Method | Endpoint                                                                                  | Request               | Success Response                                                      | Authorization                                                                 |
+| ------ | ----------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `POST` | `/washioo-api/bookings/{booking_id}/ratings`                                              | `RatingCreateRequest` | `RatingResponse`                                                      | Bearer token, role: `customer` or `cleaner`; completed bookings only          |
+| `GET`  | `/washioo-api/bookings/{booking_id}/ratings`                                              | None                  | `[RatingResponse]`                                                    | Bearer token, any authenticated role; non-admin users must be booking members |
+| `GET`  | `/washioo-api/cleaners/{cleaner_id}/ratings`                                              | None                  | `CleanerRatingSummary`                                                | Bearer token, role: `admin` or `customer`                                     |
+| `GET`  | `/washioo-api/customers/{customer_id}/ratings`                                            | None                  | `CustomerRatingSummary`                                               | Bearer token, role: `admin` or `cleaner`                                      |
+| `GET`  | `/washioo-api/admin/ratings?reviewer_role={role}&booking_id={booking_id}&page=1&limit=50` | Query params          | `{ "ratings": [RatingResponse], "total": 0, "page": 1, "limit": 50 }` | Bearer token, role: `admin`                                                   |

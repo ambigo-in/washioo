@@ -398,6 +398,10 @@ OTP delivery uses SMSCountry in every environment. Configure these variables bef
 SMS_COUNTRY_KEY=your_smscountry_account_key
 SMS_COUNTRY_TOKEN=your_smscountry_auth_token
 SMS_HEADER=AMBHPL
+WEB_PUSH_ENABLED=True
+WEB_PUSH_VAPID_PUBLIC_KEY=your_vapid_public_key
+WEB_PUSH_VAPID_PRIVATE_KEY=your_vapid_private_key
+WEB_PUSH_VAPID_SUBJECT=mailto:support@your-domain.com
 ```
 
 If credentials are missing, OTP send endpoints return an upstream delivery error.
@@ -414,7 +418,11 @@ alembic revision --autogenerate -m "Description"
 alembic upgrade head
 ```
 
-Current SQL migrations also include `db/migration/V12__soft_delete_addresses.sql`, which adds history-safe address removal. Addresses referenced by bookings are soft deleted and hidden from future address lists instead of being physically removed.
+Current SQL migrations also include `db/migration/V14__web_push_notifications.sql`, which adds cleaner browser push subscriptions and notification lookup indexes.
+
+### Browser Notifications
+
+Cleaner browser notifications use standards-based Web Push with VAPID keys. No paid third-party notification provider is required, but browsers still route messages through their own push services. The frontend must register a service worker, request notification permission, subscribe with the VAPID public key, and send the subscription to `/washioo-api/cleaner/push/subscriptions`.
 
 ## Deployment
 
@@ -435,6 +443,7 @@ docker-compose up -d --scale api=3
 - [ ] Generate strong `SECRET_KEY`
 - [ ] Configure `DATABASE_URL` with production database
 - [ ] Setup SMSCountry credentials
+- [ ] Generate and configure Web Push VAPID keys if cleaner browser notifications are enabled
 - [ ] Configure CORS origins
 - [ ] Enable HTTPS/SSL
 - [ ] Setup Redis for rate limiting (optional, for scalability)

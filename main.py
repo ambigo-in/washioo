@@ -28,6 +28,7 @@ from models import (
     cleaner_earning,
     cleaner_settlement,
     notification,
+    push_subscription,
     booking_assignment,
     payment,
     rating,
