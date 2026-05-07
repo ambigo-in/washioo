@@ -72,6 +72,15 @@ def _raise_auth_error(exc: Exception, status_code: int = 400):
 
 
 async def _send_role_otp(request: Request, db: Session, phone_number: str, role_name: str):
+    user = get_user_by_phone(db, phone_number)
+    user_roles = []
+    if user:
+        user_roles = [
+            role
+            for role in ("customer", "cleaner", "admin")
+            if user_has_role(db, user.id, role)
+        ]
+
     sent = await create_and_send_otp(
         db,
         phone_number,
@@ -85,6 +94,9 @@ async def _send_role_otp(request: Request, db: Session, phone_number: str, role_
         )
     return {
         "message": f"{role_name.title()} OTP sent successfully",
+        "user_exist": role_name in user_roles,
+        "account_type": role_name if role_name in user_roles else (user_roles[0] if user_roles else role_name),
+        "roles": user_roles,
     }
 
 
@@ -174,7 +186,10 @@ async def send_admin_otp_api(request: Request, payload: SendOTPRequest, db: Sess
     user = get_user_by_phone(db, payload.phone_number)
     if not user or not user_has_role(db, user.id, "admin"):
         return {
-            "message": "If an admin account exists for this phone, an OTP has been sent"
+            "message": "If an admin account exists for this phone, an OTP has been sent",
+            "user_exist": False,
+            "account_type": "admin",
+            "roles": [],
         }
     sent = await create_and_send_otp(
         db,
@@ -189,6 +204,9 @@ async def send_admin_otp_api(request: Request, payload: SendOTPRequest, db: Sess
         )
     return {
         "message": "Admin OTP sent successfully",
+        "user_exist": True,
+        "account_type": "admin",
+        "roles": ["admin"],
     }
 
 

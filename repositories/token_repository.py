@@ -2,7 +2,7 @@ from datetime import datetime
 from models.refresh_token import RefreshToken
 from core.security import hash_token, verify_hash, verify_token_hash
 
-def save_refresh_token(db, user_id, jti, token, expires_at):
+def save_refresh_token(db, user_id, jti, token, expires_at, commit: bool = True):
     """Save refresh token with a fast keyed hash and JTI for tracking."""
     token_hash = hash_token(token)
     
@@ -13,8 +13,9 @@ def save_refresh_token(db, user_id, jti, token, expires_at):
         expires_at=expires_at
     )
     db.add(token_obj)
-    db.commit()
-    db.refresh(token_obj)
+    if commit:
+        db.commit()
+        db.refresh(token_obj)
     return token_obj
 
 def revoke_token(db, jti: str):
@@ -26,14 +27,14 @@ def revoke_token(db, jti: str):
         return True
     return False
 
-def get_refresh_token(db, token: str):
+def get_refresh_token(db, token: str, payload: dict | None = None):
     """Get refresh token by JTI and verify hash"""
-    payload = None
-    try:
-        from core.security import decode_token
-        payload = decode_token(token)
-    except Exception:
-        return None
+    if payload is None:
+        try:
+            from core.security import decode_token
+            payload = decode_token(token)
+        except Exception:
+            return None
     
     if not payload:
         return None

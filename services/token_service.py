@@ -4,11 +4,7 @@ from core.security import (
     create_refresh_token,
     decode_token
 )
-from repositories.token_repository import (
-    get_refresh_token,
-    save_refresh_token,
-    revoke_token
-)
+from repositories.token_repository import get_refresh_token, save_refresh_token, revoke_token
 from repositories.user_repository import get_user_with_roles
 from core.config import settings
 
@@ -25,8 +21,8 @@ def refresh_user_token(db, refresh_token: str):
     if not user_id:
         raise Exception("Invalid token: missing user ID")
     
-    # Verify and retrieve the stored token
-    valid_token = get_refresh_token(db, refresh_token)
+    # Verify and retrieve the stored token using the payload already decoded above.
+    valid_token = get_refresh_token(db, refresh_token, payload)
     if not valid_token:
         raise Exception("Refresh token revoked, expired, or invalid")
     
@@ -44,8 +40,8 @@ def refresh_user_token(db, refresh_token: str):
             raise Exception("User has no active role")
         active_role = roles[0]
 
-    # Revoke old token
-    revoke_token(db, valid_token.jti)
+    # Revoke the old token and save the replacement in one transaction.
+    valid_token.revoked_at = datetime.utcnow()
 
     # Create new tokens
     token_data = {
@@ -64,8 +60,10 @@ def refresh_user_token(db, refresh_token: str):
         user_id,
         new_jti,
         new_refresh_token,
-        datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        commit=False,
     )
+    db.commit()
 
     return new_access, new_refresh_token
 
