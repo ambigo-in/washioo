@@ -14,6 +14,11 @@ class Settings:
     DATABASE_POOL_RECYCLE_SECONDS = int(os.getenv("DATABASE_POOL_RECYCLE_SECONDS", 1800))
 
     SECRET_KEY = os.getenv("SECRET_KEY")
+    PREVIOUS_SECRET_KEYS = [
+        key.strip()
+        for key in os.getenv("PREVIOUS_SECRET_KEYS", "").split(",")
+        if key.strip()
+    ]
     ALGORITHM = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
     REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
@@ -50,6 +55,11 @@ class Settings:
             raise RuntimeError(f"Missing required settings: {', '.join(missing)}")
         if len(self.SECRET_KEY) < 32:
             raise RuntimeError("SECRET_KEY must be a strong value of at least 32 characters")
+        weak_previous_keys = [
+            key for key in self.PREVIOUS_SECRET_KEYS if len(key) < 32
+        ]
+        if weak_previous_keys:
+            raise RuntimeError("Each PREVIOUS_SECRET_KEYS value must be at least 32 characters")
         if self.ENVIRONMENT == "production" and self.DEBUG:
             raise RuntimeError("DEBUG must be disabled in production")
         if self.ENVIRONMENT == "production" and self.SECRET_KEY == "your-secret-key-here-change-in-production":

@@ -8,6 +8,9 @@ import uuid
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def _token_secret_keys():
+    return [settings.SECRET_KEY, *settings.PREVIOUS_SECRET_KEYS]
+
 def hash_data(data: str):
     return pwd_context.hash(data)
 
@@ -22,7 +25,17 @@ def hash_token(token: str):
     ).hexdigest()
 
 def verify_token_hash(token: str, token_hash: str):
-    return hmac.compare_digest(hash_token(token), token_hash)
+    return any(
+        hmac.compare_digest(
+            hmac.new(
+                secret_key.encode("utf-8"),
+                token.encode("utf-8"),
+                hashlib.sha256
+            ).hexdigest(),
+            token_hash,
+        )
+        for secret_key in _token_secret_keys()
+    )
 
 def hash_identifier(value: str):
     normalized = "".join(value.split()).upper()
@@ -72,12 +85,15 @@ class TokenInvalid(Exception):
     pass
 
 def decode_token_or_raise(token: str):
-    try:
-        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except ExpiredSignatureError as exc:
-        raise TokenExpired("Token expired") from exc
-    except JWTError as exc:
-        raise TokenInvalid("Invalid token") from exc
+    last_error = None
+    for secret_key in _token_secret_keys():
+        try:
+            return jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
+        except ExpiredSignatureError as exc:
+            raise TokenExpired("Token expired") from exc
+        except JWTError as exc:
+            last_error = exc
+    raise TokenInvalid("Invalid token") from last_error
 
 def decode_token(token: str):
     try:
