@@ -126,12 +126,15 @@ class RatingService:
         booking_id: UUID | None = None,
         page: int = 1,
         limit: int = 50,
+        rating: int | None = None,
     ):
         query = db.query(Rating).options(joinedload(Rating.reviewee))
         if reviewer_role:
             query = query.filter(Rating.reviewer_role == reviewer_role)
         if booking_id:
             query = query.filter(Rating.booking_id == booking_id)
+        if rating:
+            query = query.filter(Rating.rating == rating)
 
         total = query.count()
         ratings = (

@@ -62,13 +62,14 @@ def get_customer_ratings(
 @router.get("/admin/ratings")
 def list_ratings_admin(
     reviewer_role: Literal["customer", "cleaner"] | None = Query(default=None),
+    rating: int | None = Query(default=None, ge=1, le=5),
     booking_id: UUID | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
     current_admin=Depends(require_roles(["admin"])),
 ):
-    return RatingService.list_admin_ratings(db, reviewer_role, booking_id, page, limit)
+    return RatingService.list_admin_ratings(db, reviewer_role, booking_id, page, limit, rating)
 
 
 def _current_booking_role_hint(current_user) -> str:
