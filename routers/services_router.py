@@ -50,6 +50,27 @@ router = APIRouter(prefix="/services")
 # SERVICE ENDPOINTS
 # ============================================================
 
+def format_service_category(service):
+    return {
+        "id": str(service.id),
+        "service_name": service.service_name,
+        "description": service.description,
+        "base_price": float(service.base_price),
+        "estimated_duration_minutes": service.estimated_duration_minutes,
+        "allow_extra_payment": bool(getattr(service, "allow_extra_payment", False)),
+        "max_extra_amount": (
+            float(service.max_extra_amount)
+            if getattr(service, "max_extra_amount", None) is not None
+            else None
+        ),
+        "extra_payment_instructions": getattr(
+            service,
+            "extra_payment_instructions",
+            None,
+        ),
+        "is_active": service.is_active,
+    }
+
 @router.get("/", tags=[PUBLIC_TAG])
 def get_services(
     db: Session = Depends(get_db),
@@ -59,17 +80,7 @@ def get_services(
     """Get all available services"""
     try:
         services = get_all_services(db, limit, offset)
-        service_list = [
-            {
-                "id": str(service.id),
-                "service_name": service.service_name,
-                "description": service.description,
-                "base_price": float(service.base_price),
-                "estimated_duration_minutes": service.estimated_duration_minutes,
-                "is_active": service.is_active
-            }
-            for service in services
-        ]
+        service_list = [format_service_category(service) for service in services]
         return {
             "message": "Services fetched successfully",
             "services": service_list,
@@ -88,14 +99,7 @@ def get_service_category(service_id: str, db: Session = Depends(get_db)):
 
     return {
         "message": "Service fetched successfully",
-        "service": {
-            "id": str(service.id),
-            "service_name": service.service_name,
-            "description": service.description,
-            "base_price": float(service.base_price),
-            "estimated_duration_minutes": service.estimated_duration_minutes,
-            "is_active": service.is_active
-        }
+        "service": format_service_category(service)
     }
 
 
@@ -110,14 +114,7 @@ def create_service_category_admin(
         service = create_service(db, payload.model_dump(exclude_unset=True))
         return {
             "message": "Service created successfully",
-            "service": {
-                "id": str(service.id),
-                "service_name": service.service_name,
-                "description": service.description,
-                "base_price": float(service.base_price),
-                "estimated_duration_minutes": service.estimated_duration_minutes,
-                "is_active": service.is_active
-            }
+            "service": format_service_category(service)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -137,14 +134,7 @@ def update_service_category_admin(
 
     return {
         "message": "Service updated successfully",
-        "service": {
-            "id": str(service.id),
-            "service_name": service.service_name,
-            "description": service.description,
-            "base_price": float(service.base_price),
-            "estimated_duration_minutes": service.estimated_duration_minutes,
-            "is_active": service.is_active
-        }
+        "service": format_service_category(service)
     }
 
 

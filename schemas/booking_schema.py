@@ -71,6 +71,9 @@ class CreateServiceRequest(BaseModel):
     description: Optional[str] = None
     base_price: Decimal = Field(..., gt=0)
     estimated_duration_minutes: Optional[int] = Field(default=None, gt=0)
+    allow_extra_payment: Optional[bool] = False
+    max_extra_amount: Optional[Decimal] = Field(default=None, ge=0)
+    extra_payment_instructions: Optional[str] = None
     is_active: Optional[bool] = True
 
 class UpdateServiceRequest(BaseModel):
@@ -78,6 +81,9 @@ class UpdateServiceRequest(BaseModel):
     description: Optional[str] = None
     base_price: Optional[Decimal] = Field(default=None, gt=0)
     estimated_duration_minutes: Optional[int] = Field(default=None, gt=0)
+    allow_extra_payment: Optional[bool] = None
+    max_extra_amount: Optional[Decimal] = Field(default=None, ge=0)
+    extra_payment_instructions: Optional[str] = None
     is_active: Optional[bool] = None
 
 class CreateCustomerVehicleRequest(BaseModel):
@@ -100,6 +106,9 @@ class ServiceCategorySchema(BaseModel):
     description: Optional[str] = None
     base_price: Decimal
     estimated_duration_minutes: Optional[int] = None
+    allow_extra_payment: bool = False
+    max_extra_amount: Optional[Decimal] = None
+    extra_payment_instructions: Optional[str] = None
     is_active: bool
 
     class Config:

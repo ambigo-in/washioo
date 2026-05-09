@@ -12,6 +12,9 @@ class ServiceCategory(Base):
     description = Column(String)
     base_price = Column(Numeric(10, 2), nullable=False)
     estimated_duration_minutes = Column(Integer)
+    allow_extra_payment = Column(Boolean, default=False, nullable=False)
+    max_extra_amount = Column(Numeric(10, 2))
+    extra_payment_instructions = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

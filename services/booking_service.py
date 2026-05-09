@@ -32,6 +32,8 @@ from services.notification_service import (
     notify_cleaner_booking_assigned,
     notify_customer_booking_accepted,
     notify_customer_booking_rejected,
+    notify_customer_service_completed,
+    notify_customer_service_started,
     notify_admin_booking_assignment_accepted,
     notify_admin_booking_assignment_rejected,
 )
@@ -466,6 +468,12 @@ def start_assignment_service(db, user_id, assignment_id, payload):
         "cleaner_notes": payload.cleaner_notes
     })
     update_booking(db, assignment.booking_id, {"booking_status": "in_progress"})
+    try:
+        booking = get_booking_by_id(db, assignment.booking_id)
+        if booking:
+            notify_customer_service_started(db, booking)
+    except Exception as exc:
+        logger.warning("Failed to send start notification for assignment %s: %s", assignment_id, exc)
     return get_assignment_by_id(db, assignment_id)
 
 def complete_assignment_service(db, user_id, assignment_id, payload):
@@ -491,6 +499,10 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
     booking = get_booking_by_id(db, assignment.booking_id)
     if booking:
         upsert_booking_payment(db, booking, payload)
+        try:
+            notify_customer_service_completed(db, booking)
+        except Exception as exc:
+            logger.warning("Failed to send completion notification for assignment %s: %s", assignment_id, exc)
 
     cleaner = get_cleaner_profile_by_id(db, assignment.cleaner_id)
     update_cleaner_profile(db, assignment.cleaner_id, {

@@ -39,6 +39,8 @@ class Settings:
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
     CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"]'))
     CORS_CREDENTIALS = os.getenv("CORS_CREDENTIALS", "True").lower() == "true"
+    CORS_METHODS = json.loads(os.getenv("CORS_METHODS", '["*"]'))
+    CORS_HEADERS = json.loads(os.getenv("CORS_HEADERS", '["*"]'))
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
     WEB_PUSH_ENABLED = os.getenv("WEB_PUSH_ENABLED", "False").lower() == "true"
@@ -66,6 +68,12 @@ class Settings:
             raise RuntimeError("SECRET_KEY cannot use the production placeholder value")
         if self.ENVIRONMENT == "production" and self.CORS_CREDENTIALS and "*" in self.CORS_ORIGINS:
             raise RuntimeError("CORS_ORIGINS cannot contain '*' when credentials are enabled")
+        if not isinstance(self.CORS_ORIGINS, list) or not all(isinstance(origin, str) for origin in self.CORS_ORIGINS):
+            raise RuntimeError("CORS_ORIGINS must be a JSON array of strings")
+        if not isinstance(self.CORS_METHODS, list) or not all(isinstance(method, str) for method in self.CORS_METHODS):
+            raise RuntimeError("CORS_METHODS must be a JSON array of strings")
+        if not isinstance(self.CORS_HEADERS, list) or not all(isinstance(header, str) for header in self.CORS_HEADERS):
+            raise RuntimeError("CORS_HEADERS must be a JSON array of strings")
         if self.WEB_PUSH_ENABLED:
             web_push_missing = [
                 name for name in [
@@ -77,6 +85,11 @@ class Settings:
             ]
             if web_push_missing:
                 raise RuntimeError(f"Missing required Web Push settings: {', '.join(web_push_missing)}")
+            if not (
+                self.WEB_PUSH_VAPID_SUBJECT.startswith("mailto:")
+                or self.WEB_PUSH_VAPID_SUBJECT.startswith("https://")
+            ):
+                raise RuntimeError("WEB_PUSH_VAPID_SUBJECT must start with mailto: or https://")
         if self.ENVIRONMENT == "production":
             sms_missing = [
                 name for name in ["SMS_COUNTRY_KEY", "SMS_COUNTRY_TOKEN"]

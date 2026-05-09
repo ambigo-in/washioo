@@ -102,8 +102,8 @@ def notify_user_booking_status_change(db, user_id, title, message, notification_
 
 
 def notify_customer_booking_accepted(db, booking):
-    title = "Booking accepted"
-    message = f"Your booking {booking.booking_reference or ''} has been accepted by the cleaner."
+    title = "Cleaner assigned"
+    message = f"A cleaner accepted your booking {booking.booking_reference or ''}."
     url = f"/customer/bookings/{booking.id}"
     return notify_user_booking_status_change(
         db,
@@ -111,6 +111,36 @@ def notify_customer_booking_accepted(db, booking):
         title,
         message,
         "booking_accepted",
+        booking_id=booking.id,
+        url=url,
+    )
+
+
+def notify_customer_service_started(db, booking):
+    title = "Service started"
+    message = f"Your service {booking.booking_reference or ''} has started."
+    url = f"/customer/bookings/{booking.id}"
+    return notify_user_booking_status_change(
+        db,
+        booking.customer_id,
+        title,
+        message,
+        "service_started",
+        booking_id=booking.id,
+        url=url,
+    )
+
+
+def notify_customer_service_completed(db, booking):
+    title = "Service completed"
+    message = f"Your service {booking.booking_reference or ''} has been completed."
+    url = f"/customer/bookings/{booking.id}"
+    return notify_user_booking_status_change(
+        db,
+        booking.customer_id,
+        title,
+        message,
+        "service_completed",
         booking_id=booking.id,
         url=url,
     )
