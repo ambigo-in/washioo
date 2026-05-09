@@ -39,6 +39,7 @@ from services.notification_service import (
     notify_admin_booking_assignment_accepted,
     notify_admin_booking_assignment_rejected,
 )
+from services.realtime_service import emit_role_event, emit_user_event
 import logging
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,15 @@ def create_new_booking(db, customer_id, payload):
         booking = get_booking_by_id(db, booking.id)
     except Exception as exc:
         logger.warning("Auto assignment failed for booking %s: %s", booking.id, exc)
+    emit_role_event(
+        "admin",
+        "booking_created",
+        {
+            "booking_id": str(booking.id),
+            "customer_id": str(customer_id),
+            "booking_status": booking.booking_status,
+        },
+    )
     return booking
 
 def upsert_booking_payment(db, booking, payload):
@@ -465,10 +475,28 @@ def accept_assignment_service(db, user_id, assignment_id, payload):
         booking = get_booking_by_id(db, assignment.booking_id)
         if booking:
             notify_customer_booking_accepted(db, booking)
+            emit_user_event(
+                booking.customer_id,
+                "booking_status_changed",
+                {
+                    "booking_id": str(booking.id),
+                    "booking_status": booking.booking_status,
+                    "assignment_id": str(assignment.id),
+                },
+            )
         notify_admin_booking_assignment_accepted(db, assignment)
     except Exception as exc:
         logger.warning("Failed to send accept notifications for assignment %s: %s", assignment_id, exc)
 
+    emit_role_event(
+        "admin",
+        "assignment_accepted",
+        {
+            "booking_id": str(assignment.booking_id),
+            "assignment_id": str(assignment.id),
+            "cleaner_id": str(assignment.cleaner_id),
+        },
+    )
     return get_assignment_by_id(db, assignment_id)
 
 def reject_assignment_service(db, user_id, assignment_id, payload):
@@ -501,10 +529,29 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
         booking = get_booking_by_id(db, assignment.booking_id)
         if booking:
             notify_customer_booking_rejected(db, booking)
+            emit_user_event(
+                booking.customer_id,
+                "booking_status_changed",
+                {
+                    "booking_id": str(booking.id),
+                    "booking_status": booking.booking_status,
+                    "assignment_id": str(assignment.id),
+                },
+            )
         notify_admin_booking_assignment_rejected(db, assignment)
     except Exception as exc:
         logger.warning("Failed to send reject notifications for assignment %s: %s", assignment_id, exc)
 
+    emit_role_event(
+        "admin",
+        "assignment_rejected",
+        {
+            "booking_id": str(assignment.booking_id),
+            "assignment_id": str(assignment.id),
+            "cleaner_id": str(assignment.cleaner_id),
+            "reassigned": bool(auto_assign_result and auto_assign_result.get("assigned")),
+        },
+    )
     if auto_assign_result and auto_assign_result.get("assigned"):
         return auto_assign_result["assignment"]
     return get_assignment_by_id(db, assignment_id)
@@ -528,8 +575,26 @@ def start_assignment_service(db, user_id, assignment_id, payload):
         booking = get_booking_by_id(db, assignment.booking_id)
         if booking:
             notify_customer_service_started(db, booking)
+            emit_user_event(
+                booking.customer_id,
+                "booking_status_changed",
+                {
+                    "booking_id": str(booking.id),
+                    "booking_status": booking.booking_status,
+                    "assignment_id": str(assignment.id),
+                },
+            )
     except Exception as exc:
         logger.warning("Failed to send start notification for assignment %s: %s", assignment_id, exc)
+    emit_role_event(
+        "admin",
+        "service_started",
+        {
+            "booking_id": str(assignment.booking_id),
+            "assignment_id": str(assignment.id),
+            "cleaner_id": str(assignment.cleaner_id),
+        },
+    )
     return get_assignment_by_id(db, assignment_id)
 
 def complete_assignment_service(db, user_id, assignment_id, payload):
@@ -557,6 +622,15 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
         upsert_booking_payment(db, booking, payload)
         try:
             notify_customer_service_completed(db, booking)
+            emit_user_event(
+                booking.customer_id,
+                "booking_status_changed",
+                {
+                    "booking_id": str(booking.id),
+                    "booking_status": booking.booking_status,
+                    "assignment_id": str(assignment.id),
+                },
+            )
         except Exception as exc:
             logger.warning("Failed to send completion notification for assignment %s: %s", assignment_id, exc)
 
@@ -565,6 +639,15 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
         "availability_status": "available",
         "total_jobs_completed": (cleaner.total_jobs_completed or 0) + 1
     })
+    emit_role_event(
+        "admin",
+        "service_completed",
+        {
+            "booking_id": str(assignment.booking_id),
+            "assignment_id": str(assignment.id),
+            "cleaner_id": str(assignment.cleaner_id),
+        },
+    )
     return get_assignment_by_id(db, assignment_id)
 
 def format_admin_booking(booking):

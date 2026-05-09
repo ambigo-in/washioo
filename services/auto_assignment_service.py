@@ -20,6 +20,7 @@ from repositories.cleaner_repository import (
     get_auto_assignable_cleaners,
 )
 from services.notification_service import notify_cleaner_booking_assigned
+from services.realtime_service import emit_role_event, emit_user_event
 
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,14 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
     candidates.sort(key=lambda item: item["score"], reverse=True)
     if not candidates:
         update_booking(db, booking_id, {"booking_status": "pending"})
+        emit_role_event(
+            "admin",
+            "admin_action_required",
+            {
+                "booking_id": str(booking_id),
+                "reason": "no_available_cleaner",
+            },
+        )
         return {
             "assigned": False,
             "reason": "no_available_cleaner",
@@ -203,6 +212,17 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
             notify_cleaner_booking_assigned(db, assignment.cleaner.user_id, assignment)
     except Exception as exc:
         logger.warning("Failed to notify auto-assigned cleaner for booking %s: %s", booking_id, exc)
+
+    event_data = {
+        "booking_id": str(booking_id),
+        "assignment_id": str(assignment.id),
+        "cleaner_id": str(selected["cleaner"].id),
+        "distance_km": selected["distance_km"],
+        "score": selected["score"],
+    }
+    emit_role_event("admin", "booking_auto_assigned", event_data)
+    if booking.customer_id:
+        emit_user_event(booking.customer_id, "booking_assignment_updated", event_data)
 
     return {
         "assigned": True,

@@ -13,6 +13,7 @@ from repositories.notification_repository import (
     mark_push_subscription_used,
     upsert_push_subscription,
 )
+from services.realtime_service import emit_user_event
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,14 @@ def notify_cleaner_booking_assigned(db, cleaner_user_id, assignment):
         "booking_id": str(assignment.booking_id),
         "url": f"/cleaner/bookings/{assignment.booking_id}",
     }
+    emit_user_event(
+        cleaner_user_id,
+        "notification_created",
+        {
+            "notification": format_notification(notification),
+            **data,
+        },
+    )
     send_web_push_to_user(db, cleaner_user_id, title, message, data)
     return notification
 
@@ -99,6 +108,14 @@ def notify_user_booking_status_change(db, user_id, title, message, notification_
     if url is not None:
         data["url"] = url
 
+    emit_user_event(
+        user_id,
+        "notification_created",
+        {
+            "notification": format_notification(notification),
+            **data,
+        },
+    )
     send_web_push_to_user(db, user_id, title, message, data)
     return notification
 

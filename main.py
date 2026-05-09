@@ -44,6 +44,7 @@ from routers.customer_router import router as customer_router
 from routers.payment_router import router as payment_router
 from routers.payment_router import workflow_router as payment_workflow_router
 from routers.rating_router import router as rating_router
+from routers.websocket_router import router as websocket_router
 
 openapi_tags = [
     {
@@ -140,6 +141,7 @@ api_router.include_router(customer_router)
 api_router.include_router(payment_router)
 api_router.include_router(payment_workflow_router)
 api_router.include_router(rating_router)
+api_router.include_router(websocket_router)
 
 @api_router.get("/", tags=["Public APIs"])
 def root():
