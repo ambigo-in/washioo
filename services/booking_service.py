@@ -10,6 +10,7 @@ from repositories.assignment_repository import (
     create_assignment, get_assignment_by_id, get_assignment_by_booking_id,
     get_cleaner_assignments, get_all_assignments, update_assignment
 )
+from repositories.assignment_attempt_repository import close_latest_open_attempt
 from repositories.cleaner_repository import (
     create_cleaner_profile, get_cleaner_profile_by_id, get_cleaner_profile_by_user_id,
     get_all_cleaner_profiles, update_cleaner_profile, delete_cleaner_profile,
@@ -452,6 +453,13 @@ def accept_assignment_service(db, user_id, assignment_id, payload):
     })
     update_booking(db, assignment.booking_id, {"booking_status": "accepted"})
     update_cleaner_profile(db, assignment.cleaner_id, {"availability_status": "busy"})
+    close_latest_open_attempt(
+        db,
+        assignment.booking_id,
+        assignment.cleaner_id,
+        "accepted",
+        payload.cleaner_notes,
+    )
 
     try:
         booking = get_booking_by_id(db, assignment.booking_id)
@@ -475,6 +483,19 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
     })
     update_booking(db, assignment.booking_id, {"booking_status": "pending"})
     update_cleaner_profile(db, assignment.cleaner_id, {"availability_status": "available"})
+    close_latest_open_attempt(
+        db,
+        assignment.booking_id,
+        assignment.cleaner_id,
+        "rejected",
+        payload.cleaner_notes or "Rejected by cleaner",
+    )
+
+    auto_assign_result = None
+    try:
+        auto_assign_result = auto_assign_booking(db, assignment.booking_id)
+    except Exception as exc:
+        logger.warning("Auto reassignment failed after rejection %s: %s", assignment_id, exc)
 
     try:
         booking = get_booking_by_id(db, assignment.booking_id)
@@ -484,6 +505,8 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
     except Exception as exc:
         logger.warning("Failed to send reject notifications for assignment %s: %s", assignment_id, exc)
 
+    if auto_assign_result and auto_assign_result.get("assigned"):
+        return auto_assign_result["assignment"]
     return get_assignment_by_id(db, assignment_id)
 
 def start_assignment_service(db, user_id, assignment_id, payload):

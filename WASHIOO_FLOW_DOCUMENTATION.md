@@ -14,9 +14,10 @@ This document explains how the current Washioo customer, cleaner, and admin flow
 8. Backend creates the booking and tries auto assignment.
 9. If a cleaner is found, booking status becomes `assigned`.
 10. If no cleaner is found, booking remains `pending`.
-11. Customer tracks booking from My Bookings.
-12. Customer receives notifications for cleaner assignment, service start, and service completion.
-13. Customer rates the cleaner after completion.
+11. If the assigned cleaner rejects, backend immediately offers the booking to the next eligible cleaner.
+12. Customer tracks booking from My Bookings.
+13. Customer receives notifications for cleaner assignment, service start, and service completion.
+14. Customer rates the cleaner after completion.
 
 ## Cleaner
 
@@ -27,11 +28,12 @@ This document explains how the current Washioo customer, cleaner, and admin flow
 5. Cleaner remains eligible for auto assignment while approved, available, recently located, and inside service radius.
 6. New auto-assigned booking appears in dashboard live services and My Assignments.
 7. Cleaner opens details and accepts or rejects.
-8. Cleaner can start route from assignment card/details.
-9. Cleaner starts service.
-10. Cleaner completes service and records collected amount/payment type.
-11. Cleaner rates customer after completion.
-12. Cleaner earnings update after admin payment reconciliation.
+8. If cleaner rejects, the booking is automatically offered to the next eligible cleaner.
+9. Cleaner can start route from assignment card/details after accepting.
+10. Cleaner starts service.
+11. Cleaner completes service and records collected amount/payment type.
+12. Cleaner rates customer after completion.
+13. Cleaner earnings update after admin payment reconciliation.
 
 ## Admin
 
@@ -41,7 +43,7 @@ This document explains how the current Washioo customer, cleaner, and admin flow
 4. Admin can configure service price and extra-payment handling.
 5. Admin monitors bookings.
 6. If booking is pending, admin can click Auto Assign to retry system matching.
-7. Admin can manually assign an approved available cleaner.
+7. Admin manually assigns only when the auto pool is exhausted, cleaners are offline/busy, location is missing, or business support needs to override.
 8. Admin reconciles payments after cleaner records collection.
 
 ## Auto Assignment
@@ -68,17 +70,22 @@ Scoring:
 Fallback:
 
 - if no cleaner qualifies, booking remains `pending`
+- if a cleaner rejects, the backend records the rejected attempt and tries the next eligible cleaner
+- previously offered/rejected/expired cleaners are excluded for that booking
 - admin can retry Auto Assign
-- admin can manually assign
+- admin can manually assign only as the final fallback or manual override
 
 ## Important Backend Files
 
 - `services/auto_assignment_service.py`: scoring and selection
+- `repositories/assignment_attempt_repository.py`: auto-assignment attempt tracking
 - `services/booking_service.py`: booking lifecycle and assignment actions
 - `routers/services_router.py`: booking, cleaner location, and admin auto-assign endpoints
 - `models/cleaner_profile.py`: cleaner availability/location fields
 - `models/booking_assignment.py`: assignment metadata
-- `db/migration/V16__auto_assignment.sql`: database changes
+- `models/booking_assignment_attempt.py`: dispatch attempt history
+- `db/migration/V16__auto_assignment.sql`: auto-assignment fields
+- `db/migration/V17__assignment_attempts.sql`: dispatch attempt history
 
 ## Important Frontend Files
 

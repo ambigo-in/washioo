@@ -54,6 +54,7 @@ V13__performance_indexes.sql
 V14__web_push_notifications.sql
 V15__service_extra_payment_fields.sql
 V16__auto_assignment.sql
+V17__assignment_attempts.sql
 ```
 
 ## Phone Number Format
@@ -925,8 +926,10 @@ Washioo supports MVP automatic assignment for customer bookings. Auto assignment
 2. Backend creates the booking as `pending`.
 3. Backend immediately tries to find an approved, available cleaner near the booking address.
 4. If a cleaner is found, backend creates/updates `booking_assignments`, marks the booking `assigned`, stores assignment metadata, and notifies the cleaner.
-5. Cleaner accepts or rejects using existing assignment action APIs.
-6. If no cleaner is available, booking remains `pending`; admin can use the auto assign retry API or assign manually.
+5. Backend records the offer in `booking_assignment_attempts`.
+6. Cleaner accepts or rejects using existing assignment action APIs.
+7. If cleaner rejects, the open attempt is marked `rejected` and the backend immediately tries the next eligible cleaner, excluding cleaners already offered this booking.
+8. If no cleaner is available or all eligible cleaners already rejected/expired, booking remains `pending`; admin can use the auto assign retry API or assign manually.
 
 ### Cleaner Eligibility
 
@@ -961,6 +964,8 @@ Assignment metadata returned in booking/assignment responses:
   "distance_km": 2.4
 }
 ```
+
+Attempt metadata is stored in `booking_assignment_attempts` for dispatch memory. This prevents a booking from being offered repeatedly to the same cleaner after rejection or expiry.
 
 ### Update Cleaner Live Location
 
@@ -1033,6 +1038,8 @@ Success when no cleaner is available:
   "assignment": null
 }
 ```
+
+`reason = no_available_cleaner` means the automatic pool is exhausted for that booking at that moment. Admin is the fallback only in this state.
 
 ### Booking Create Response With Auto Assignment
 

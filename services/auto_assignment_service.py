@@ -9,6 +9,11 @@ from repositories.assignment_repository import (
     get_assignment_by_id,
     update_assignment,
 )
+from repositories.assignment_attempt_repository import (
+    close_latest_open_attempt,
+    create_assignment_attempt,
+    get_assignment_attempts_by_booking,
+)
 from repositories.booking_repository import get_booking_by_id, update_booking
 from repositories.cleaner_repository import (
     count_cleaner_active_assignments,
@@ -80,7 +85,13 @@ def _score_cleaner(db, cleaner, booking):
 
 
 def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_admin=None):
-    excluded = {str(cleaner_id) for cleaner_id in (excluded_cleaner_ids or [])}
+    previous_attempts = get_assignment_attempts_by_booking(db, booking_id)
+    excluded = {
+        str(attempt.cleaner_id)
+        for attempt in previous_attempts
+        if attempt.status in ["offered", "accepted", "rejected", "expired"]
+    }
+    excluded.update(str(cleaner_id) for cleaner_id in (excluded_cleaner_ids or []))
     booking = get_booking_by_id(db, booking_id)
     if not booking:
         raise Exception("Booking not found")
@@ -93,6 +104,30 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
         }
 
     existing_assignment = get_assignment_by_booking_id(db, booking_id)
+    if (
+        existing_assignment
+        and existing_assignment.assignment_status == "assigned"
+        and existing_assignment.expires_at
+        and existing_assignment.expires_at <= datetime.utcnow()
+    ):
+        close_latest_open_attempt(
+            db,
+            existing_assignment.booking_id,
+            existing_assignment.cleaner_id,
+            "expired",
+            "Cleaner did not respond before assignment expiry.",
+        )
+        excluded.add(str(existing_assignment.cleaner_id))
+        existing_assignment = update_assignment(
+            db,
+            existing_assignment.id,
+            {
+                "assignment_status": "rejected",
+                "rejected_reason": "Auto assignment expired",
+            },
+        )
+        update_booking(db, booking_id, {"booking_status": "pending"})
+
     if existing_assignment and existing_assignment.assignment_status in [
         "accepted",
         "in_progress",
@@ -123,6 +158,7 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
 
     selected = candidates[0]
     now = datetime.utcnow()
+    expires_at = now + timedelta(minutes=ASSIGNMENT_ACCEPT_MINUTES)
     assignment_data = {
         "cleaner_id": selected["cleaner"].id,
         "assigned_by_admin": assigned_by_admin,
@@ -132,7 +168,7 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
         "completed_at": None,
         "assignment_status": "assigned",
         "cleaner_notes": "Auto assigned",
-        "expires_at": now + timedelta(minutes=ASSIGNMENT_ACCEPT_MINUTES),
+        "expires_at": expires_at,
         "rejected_reason": None,
         "auto_assigned": True,
         "assignment_rank": 1,
@@ -148,6 +184,20 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
 
     update_booking(db, booking_id, {"booking_status": "assigned"})
     assignment = get_assignment_by_id(db, assignment.id)
+    create_assignment_attempt(
+        db,
+        {
+            "booking_id": booking_id,
+            "cleaner_id": selected["cleaner"].id,
+            "assignment_id": assignment.id,
+            "status": "offered",
+            "score": Decimal(str(selected["score"])),
+            "distance_km": Decimal(str(selected["distance_km"])),
+            "reason": "Auto assignment offer",
+            "offered_at": now,
+            "expires_at": expires_at,
+        },
+    )
     try:
         if assignment.cleaner and assignment.cleaner.user_id:
             notify_cleaner_booking_assigned(db, assignment.cleaner.user_id, assignment)

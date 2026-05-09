@@ -1390,6 +1390,7 @@ V13__performance_indexes.sql
 V14__web_push_notifications.sql
 V15__service_extra_payment_fields.sql
 V16__auto_assignment.sql
+V17__assignment_attempts.sql
 ```
 
 Alembic is scaffolded for future migration generation:
@@ -1448,6 +1449,7 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 - While cleaner dashboard is open and status is `available`, refresh live location periodically. Current frontend interval is 5 minutes.
 - Show assignment actions based on `assignment_status`.
 - New auto-assigned bookings appear with normal assignment flow: cleaner must accept before starting service.
+- If cleaner rejects, backend automatically tries the next eligible cleaner. The rejecting cleaner does not need to do anything else.
 
 ### Admin UI
 
@@ -1491,9 +1493,9 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 1. Admin logs in only through direct admin URL.
 2. Admin approves/rejects cleaner profiles.
 3. Admin monitors bookings.
-4. Pending bookings may already have failed auto assignment because no eligible cleaner was found.
+4. Pending bookings may already have failed auto assignment because no eligible cleaner was found or all eligible cleaners rejected/expired.
 5. Admin can click Auto Assign to retry matching after cleaners come online.
-6. Admin can manually assign a cleaner if needed.
+6. Admin manually assigns only when the auto pool is exhausted or business support needs to override.
 7. Admin reviews payment collections and splits cleaner/admin share.
 
 ### Auto Assignment Rules
@@ -1508,6 +1510,8 @@ Cleaner must be:
 - within service radius of booking address
 
 The selected cleaner is the highest-scoring candidate based on distance, rating, active workload, and fairness.
+
+Rejected and expired auto-assignment offers are recorded in `booking_assignment_attempts`, so the same booking is not repeatedly offered to the same cleaner. Admin becomes responsible only after no eligible untried cleaner is available.
 
 ### PII
 

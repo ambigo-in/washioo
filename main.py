@@ -30,6 +30,7 @@ from models import (
     notification,
     push_subscription,
     booking_assignment,
+    booking_assignment_attempt,
     payment,
     rating,
     review,

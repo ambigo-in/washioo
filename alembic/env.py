@@ -11,6 +11,7 @@ from models import (
     audit_log,
     booking,
     booking_assignment,
+    booking_assignment_attempt,
     cleaner_earning,
     cleaner_profile,
     cleaner_settlement,
