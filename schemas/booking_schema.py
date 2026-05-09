@@ -168,6 +168,9 @@ class UpdateCleanerLocationRequest(BaseModel):
     def normalize_coordinate(cls, value: float) -> float:
         return round(float(value), 6)
 
+class VerifyCleanerIdentityRequest(BaseModel):
+    phone_last_four: str = Field(..., pattern=r"^\d{4}$")
+
 class AssignBookingRequest(BaseModel):
     cleaner_id: str
     cleaner_notes: Optional[str] = None

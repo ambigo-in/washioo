@@ -16,6 +16,7 @@ from schemas.booking_schema import (
     UpdateCleanerLocationRequest,
     UpdateCleanerProfileRequest,
     UpdateServiceRequest,
+    VerifyCleanerIdentityRequest,
 )
 from core.database import get_db
 from core.role_dependencies import require_roles
@@ -624,6 +625,28 @@ def get_current_cleaner_profile(
             "message": "Cleaner profile fetched successfully",
             "cleaner": format_cleaner_profile(cleaner)
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Request could not be processed")
+
+
+@router.post("/cleaner/profile/verify-identity", tags=[CLEANER_TAG])
+def verify_current_cleaner_identity(
+    payload: VerifyCleanerIdentityRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner verifies phone last 4 digits to view own full identity details"""
+    try:
+        phone_last_four = (current_cleaner.phone or "")[-4:]
+        if payload.phone_last_four != phone_last_four:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Identity verification failed")
+        cleaner = get_or_create_cleaner_profile_service(db, current_cleaner.id)
+        return {
+            "message": "Cleaner identity verified successfully",
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
 
