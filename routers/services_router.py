@@ -36,7 +36,8 @@ from services.booking_service import (
     list_cleaner_assignments_service, list_all_assignments_service,
     get_cleaner_assignment_service, accept_assignment_service,
     reject_assignment_service, start_assignment_service,
-    complete_assignment_service, format_cleaner_profile, format_assignment
+    complete_assignment_service, format_cleaner_profile, format_assignment,
+    format_assignment_summary,
 )
 
 
@@ -273,7 +274,7 @@ def book_service(
                 "scheduled_date": str(booking.scheduled_date),
                 "scheduled_time": str(booking.scheduled_time),
                 "booking_status": booking.booking_status,
-                "assignment": format_assignment(booking.assignment) if booking.assignment else None,
+                "assignment": format_assignment_summary(booking.assignment) if booking.assignment else None,
                 "estimated_price": float(booking.estimated_price),
                 "created_at": booking.created_at.isoformat()
             }
