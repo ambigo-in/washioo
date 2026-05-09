@@ -1,4 +1,5 @@
 from sqlalchemy.orm import joinedload
+from models.booking_assignment import BookingAssignment
 from models.cleaner_profile import CleanerProfile
 from models.user import User
 from models.user_role import UserRole
@@ -39,6 +40,33 @@ def get_all_cleaner_profiles(db, approval_status=None, availability_status=None,
         query = query.filter(CleanerProfile.availability_status == availability_status)
 
     return query.order_by(CleanerProfile.created_at.desc()).offset(offset).limit(limit).all()
+
+
+def get_auto_assignable_cleaners(db):
+    return (
+        db.query(CleanerProfile)
+        .options(joinedload(CleanerProfile.user))
+        .filter(
+            CleanerProfile.approval_status == "approved",
+            CleanerProfile.availability_status == "available",
+            CleanerProfile.auto_assign_enabled == True,
+            CleanerProfile.current_latitude.isnot(None),
+            CleanerProfile.current_longitude.isnot(None),
+            CleanerProfile.last_location_at.isnot(None),
+        )
+        .all()
+    )
+
+
+def count_cleaner_active_assignments(db, cleaner_id):
+    return (
+        db.query(BookingAssignment)
+        .filter(
+            BookingAssignment.cleaner_id == cleaner_id,
+            BookingAssignment.assignment_status.in_(["assigned", "accepted", "in_progress"]),
+        )
+        .count()
+    )
 
 
 def update_cleaner_profile(db, cleaner_id, cleaner_data):

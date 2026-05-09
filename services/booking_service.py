@@ -28,6 +28,7 @@ from repositories.customer_vehicle_repository import (
     update_vehicle,
 )
 from core.security import hash_identifier, mask_identifier
+from services.auto_assignment_service import auto_assign_booking
 from services.notification_service import (
     notify_cleaner_booking_assigned,
     notify_customer_booking_accepted,
@@ -108,6 +109,11 @@ def create_new_booking(db, customer_id, payload):
         })
     
     booking = create_booking(db, booking_data)
+    try:
+        auto_assign_booking(db, booking.id)
+        booking = get_booking_by_id(db, booking.id)
+    except Exception as exc:
+        logger.warning("Auto assignment failed for booking %s: %s", booking.id, exc)
     return booking
 
 def upsert_booking_payment(db, booking, payload):
@@ -338,11 +344,31 @@ def update_current_cleaner_availability_service(db, user_id, payload):
     cleaner = get_or_create_cleaner_profile_service(db, user_id)
     if cleaner.approval_status != "approved" and payload.availability_status != "offline":
         raise Exception("Cleaner must be approved before becoming available or busy")
+    update_data = {"availability_status": payload.availability_status}
+    if payload.availability_status == "available":
+        update_data["last_available_at"] = datetime.utcnow()
     return update_cleaner_profile(
         db,
         cleaner.id,
-        {"availability_status": payload.availability_status}
+        update_data
     )
+
+def update_current_cleaner_location_service(db, user_id, payload):
+    cleaner = get_or_create_cleaner_profile_service(db, user_id)
+    if cleaner.approval_status != "approved":
+        raise Exception("Cleaner must be approved before updating live location")
+    return update_cleaner_profile(
+        db,
+        cleaner.id,
+        {
+            "current_latitude": payload.latitude,
+            "current_longitude": payload.longitude,
+            "last_location_at": datetime.utcnow(),
+        },
+    )
+
+def auto_assign_booking_service(db, booking_id, admin_id=None):
+    return auto_assign_booking(db, booking_id, assigned_by_admin=admin_id)
 
 def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
     booking = get_booking_by_id(db, booking_id)
@@ -368,7 +394,13 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
         "started_at": None,
         "completed_at": None,
         "assignment_status": "assigned",
-        "cleaner_notes": payload.cleaner_notes
+        "cleaner_notes": payload.cleaner_notes,
+        "expires_at": None,
+        "rejected_reason": None,
+        "auto_assigned": False,
+        "assignment_rank": None,
+        "assignment_score": None,
+        "distance_km": None,
     }
 
     if existing_assignment:
@@ -438,7 +470,8 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
 
     assignment = update_assignment(db, assignment_id, {
         "assignment_status": "rejected",
-        "cleaner_notes": payload.cleaner_notes
+        "cleaner_notes": payload.cleaner_notes,
+        "rejected_reason": payload.cleaner_notes,
     })
     update_booking(db, assignment.booking_id, {"booking_status": "pending"})
     update_cleaner_profile(db, assignment.cleaner_id, {"availability_status": "available"})
@@ -692,6 +725,11 @@ def format_cleaner_profile(cleaner, include_sensitive_identity=False):
         "service_radius_km": float(cleaner.service_radius_km) if cleaner.service_radius_km is not None else None,
         "approval_status": cleaner.approval_status,
         "availability_status": cleaner.availability_status,
+        "current_latitude": float(cleaner.current_latitude) if getattr(cleaner, "current_latitude", None) is not None else None,
+        "current_longitude": float(cleaner.current_longitude) if getattr(cleaner, "current_longitude", None) is not None else None,
+        "last_location_at": cleaner.last_location_at.isoformat() if getattr(cleaner, "last_location_at", None) else None,
+        "last_available_at": cleaner.last_available_at.isoformat() if getattr(cleaner, "last_available_at", None) else None,
+        "auto_assign_enabled": bool(getattr(cleaner, "auto_assign_enabled", True)),
         "rating": float(cleaner.rating) if cleaner.rating is not None else 0,
         "average_rating": float(cleaner.average_rating) if getattr(cleaner, "average_rating", None) is not None else 0,
         "total_ratings": cleaner.total_ratings or 0,
@@ -740,6 +778,11 @@ def format_assignment_summary(assignment):
         "started_at": assignment.started_at.isoformat() if assignment.started_at else None,
         "completed_at": assignment.completed_at.isoformat() if assignment.completed_at else None,
         "cleaner_notes": assignment.cleaner_notes,
+        "expires_at": assignment.expires_at.isoformat() if getattr(assignment, "expires_at", None) else None,
+        "auto_assigned": bool(getattr(assignment, "auto_assigned", False)),
+        "assignment_rank": assignment.assignment_rank,
+        "assignment_score": float(assignment.assignment_score) if getattr(assignment, "assignment_score", None) is not None else None,
+        "distance_km": float(assignment.distance_km) if getattr(assignment, "distance_km", None) is not None else None,
     }
 
 def format_assignment(assignment):
@@ -749,7 +792,7 @@ def format_assignment(assignment):
     return {
         **format_assignment_summary(assignment),
         "booking_id": str(assignment.booking_id),
-        "assigned_by_admin": str(assignment.assigned_by_admin),
+        "assigned_by_admin": str(assignment.assigned_by_admin) if assignment.assigned_by_admin else None,
         "cleaner": format_cleaner_profile(assignment.cleaner),
         "booking": format_admin_booking(booking) if booking else None,
     }

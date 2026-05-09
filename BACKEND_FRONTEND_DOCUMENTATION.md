@@ -17,6 +17,9 @@ It reflects the latest production-oriented backend changes:
 - Aadhaar and driving license are returned in full only on admin cleaner management APIs for approval verification; all other responses use masked values and boolean flags.
 - Booking status changes are controlled by lifecycle APIs, not arbitrary admin status patches.
 - Cleaner browser notifications use Web Push with VAPID keys. No paid third-party notification service is required.
+- Customer bookings now attempt automatic cleaner assignment immediately after booking creation.
+- Cleaner live location is used only for assignment matching and is updated from cleaner dashboard/availability screens.
+- Admin can retry automatic assignment for pending bookings and can still manually assign a cleaner.
 - Major list APIs support pagination with `limit` and `offset`.
 - Production responses avoid leaking raw exception strings; unexpected errors return generic messages.
 
@@ -38,6 +41,7 @@ It reflects the latest production-oriented backend changes:
 | Payment schemas                                      | `schemas/payment_schema.py`                                     |
 | Rating schemas                                       | `schemas/rating_schema.py`                                      |
 | Booking and cleaner business logic                   | `services/booking_service.py`                                   |
+| Auto assignment scoring                              | `services/auto_assignment_service.py`                           |
 | Customer vehicle repository                          | `repositories/customer_vehicle_repository.py`                   |
 | Auth business logic                                  | `services/auth_service.py`                                      |
 | OTP/SMS delivery                                     | `services/otp_service.py`, `services/sms_service.py`            |
@@ -1381,6 +1385,11 @@ V8__add_cleaner_handover_status.sql
 V9__add_bidirectional_ratings.sql
 V10__deployment_indexes.sql
 V11__add_customer_vehicles.sql
+V12__soft_delete_addresses.sql
+V13__performance_indexes.sql
+V14__web_push_notifications.sql
+V15__service_extra_payment_fields.sql
+V16__auto_assignment.sql
 ```
 
 Alembic is scaffolded for future migration generation:
@@ -1426,6 +1435,7 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 - Manage addresses with `/washioo-api/services/address*`; keep the remove button and remove the address from UI state after a successful `DELETE`.
 - Manage vehicles with `/washioo-api/customer/vehicles`.
 - Booking create requires service and schedule, plus address/default address. Vehicle is optional and falls back to the default vehicle when available.
+- After booking creation, inspect returned `booking.booking_status` and `booking.assignment`. If status is `assigned`, show that a cleaner has been assigned. If status remains `pending`, show waiting/admin assignment state.
 - Allow edit/cancel only for `pending` bookings.
 
 ### Cleaner UI
@@ -1434,7 +1444,10 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 - Driving license field is optional.
 - Show approval pending screen until `approval_status=approved`.
 - Allow availability switch to `available` only after approval.
+- When switching to `available`, capture browser geolocation and call `PATCH /washioo-api/services/cleaner/location`.
+- While cleaner dashboard is open and status is `available`, refresh live location periodically. Current frontend interval is 5 minutes.
 - Show assignment actions based on `assignment_status`.
+- New auto-assigned bookings appear with normal assignment flow: cleaner must accept before starting service.
 
 ### Admin UI
 
@@ -1442,7 +1455,59 @@ Root `database.sql` is kept for Docker/Postgres direct initialization. Productio
 - Add/update admins through `/washioo-api/auth/admin/create` and `/washioo-api/auth/admin/{admin_id}`.
 - Approve cleaners from pending list.
 - Assign pending bookings to approved available cleaners.
+- Use `POST /washioo-api/services/admin/bookings/{booking_id}/auto-assign` to retry automatic matching for a pending booking.
 - Do not send `booking_status` in admin booking patch requests.
+
+## Complete Operational Flow
+
+### Customer Flow
+
+1. Customer enters phone number and receives OTP.
+2. Customer signs in or signs up.
+3. Customer chooses a wash service.
+4. Customer selects or creates address. The address must include latitude/longitude for auto assignment.
+5. Customer selects date/time and confirms booking.
+6. Backend creates the booking and immediately attempts auto assignment.
+7. If auto assignment succeeds, booking becomes `assigned` and the cleaner is notified.
+8. If no eligible cleaner is found, booking remains `pending` for admin retry/manual assignment.
+9. Customer receives lifecycle notifications when cleaner is assigned/accepted, service starts, and service completes.
+10. After completion, customer can rate the cleaner.
+
+### Cleaner Flow
+
+1. Cleaner signs up with Aadhaar and optional driving license.
+2. Admin approves cleaner.
+3. Cleaner opens availability page and sets status to `available`.
+4. Frontend captures location and updates backend with `/services/cleaner/location`.
+5. Auto assignment can now consider this cleaner.
+6. Cleaner receives “New booking assigned” notification.
+7. Cleaner opens booking details and accepts or rejects.
+8. After accepting, cleaner can start route and then start service.
+9. Cleaner completes service, records collected amount/payment type, and can rate the customer.
+10. Cleaner becomes available again after completion.
+
+### Admin Flow
+
+1. Admin logs in only through direct admin URL.
+2. Admin approves/rejects cleaner profiles.
+3. Admin monitors bookings.
+4. Pending bookings may already have failed auto assignment because no eligible cleaner was found.
+5. Admin can click Auto Assign to retry matching after cleaners come online.
+6. Admin can manually assign a cleaner if needed.
+7. Admin reviews payment collections and splits cleaner/admin share.
+
+### Auto Assignment Rules
+
+Cleaner must be:
+
+- approved
+- available
+- auto assignment enabled
+- location known
+- location updated recently
+- within service radius of booking address
+
+The selected cleaner is the highest-scoring candidate based on distance, rating, active workload, and fairness.
 
 ### PII
 

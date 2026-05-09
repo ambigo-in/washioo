@@ -159,6 +159,15 @@ class UpdateCleanerProfileRequest(BaseModel):
 class UpdateCleanerAvailabilityRequest(BaseModel):
     availability_status: Literal["offline", "available", "busy"]
 
+class UpdateCleanerLocationRequest(BaseModel):
+    latitude: float
+    longitude: float
+
+    @field_validator("latitude", "longitude")
+    @classmethod
+    def normalize_coordinate(cls, value: float) -> float:
+        return round(float(value), 6)
+
 class AssignBookingRequest(BaseModel):
     cleaner_id: str
     cleaner_notes: Optional[str] = None

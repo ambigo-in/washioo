@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, String, DateTime, Numeric, Integer, ForeignKey, Index
+from sqlalchemy import Boolean, CheckConstraint, Column, String, DateTime, Numeric, Integer, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -20,6 +20,11 @@ class CleanerProfile(Base):
     service_radius_km = Column(Numeric(8, 2))
     approval_status = Column(String(30), default="pending")
     availability_status = Column(String(30), default="offline")
+    current_latitude = Column(Numeric(10, 8))
+    current_longitude = Column(Numeric(11, 8))
+    last_location_at = Column(DateTime)
+    last_available_at = Column(DateTime)
+    auto_assign_enabled = Column(Boolean, default=True, nullable=False)
     rating = Column(Numeric(3, 2), default=0)
     average_rating = Column(Numeric(3, 2), default=0, nullable=False)
     total_ratings = Column(Integer, default=0, nullable=False)
@@ -41,6 +46,7 @@ class CleanerProfile(Base):
             name="chk_cleaner_availability_status",
         ),
         Index("idx_cleaner_status", "approval_status", "availability_status"),
+        Index("idx_cleaner_auto_assign", "approval_status", "availability_status", "auto_assign_enabled"),
         Index(
             "idx_cleaner_aadhaar_hash",
             "aadhaar_number_hash",

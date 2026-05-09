@@ -13,6 +13,7 @@ from schemas.booking_schema import (
     UpdateAddressRequest,
     UpdateBookingRequest,
     UpdateCleanerAvailabilityRequest,
+    UpdateCleanerLocationRequest,
     UpdateCleanerProfileRequest,
     UpdateServiceRequest,
 )
@@ -29,7 +30,9 @@ from services.booking_service import (
     get_or_create_cleaner_profile_service,
     list_cleaner_profiles_service, get_cleaner_profile_service,
     update_cleaner_profile_service, delete_cleaner_profile_service,
+    auto_assign_booking_service,
     update_current_cleaner_availability_service, assign_booking_to_cleaner_service, format_address,
+    update_current_cleaner_location_service,
     list_cleaner_assignments_service, list_all_assignments_service,
     get_cleaner_assignment_service, accept_assignment_service,
     reject_assignment_service, start_assignment_service,
@@ -270,6 +273,7 @@ def book_service(
                 "scheduled_date": str(booking.scheduled_date),
                 "scheduled_time": str(booking.scheduled_time),
                 "booking_status": booking.booking_status,
+                "assignment": format_assignment(booking.assignment) if booking.assignment else None,
                 "estimated_price": float(booking.estimated_price),
                 "created_at": booking.created_at.isoformat()
             }
@@ -454,6 +458,28 @@ def assign_booking_admin(
         raise HTTPException(status_code=400, detail="Request could not be processed")
 
 
+@router.post("/admin/bookings/{booking_id}/auto-assign", tags=[ADMIN_TAG])
+def auto_assign_booking_admin(
+    booking_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin trigger auto assignment for a pending booking"""
+    try:
+        result = auto_assign_booking_service(db, booking_id, current_admin.id)
+        return {
+            "message": "Auto assignment completed" if result["assigned"] else "Auto assignment could not find a cleaner",
+            "assigned": result["assigned"],
+            "reason": result["reason"],
+            "score": result.get("score"),
+            "distance_km": result.get("distance_km"),
+            "candidates": result.get("candidates", 0),
+            "assignment": format_assignment(result["assignment"]) if result.get("assignment") else None,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Request could not be processed")
+
+
 @router.get("/admin/bookings-by-status/{status}", tags=[ADMIN_TAG])
 def get_bookings_by_status_admin(
     status: str,
@@ -612,6 +638,23 @@ def update_current_cleaner_availability(
         cleaner = update_current_cleaner_availability_service(db, current_cleaner.id, payload)
         return {
             "message": "Availability updated successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Request could not be processed")
+
+
+@router.patch("/cleaner/location", tags=[CLEANER_TAG])
+def update_current_cleaner_location(
+    payload: UpdateCleanerLocationRequest,
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner updates live location used by auto assignment"""
+    try:
+        cleaner = update_current_cleaner_location_service(db, current_cleaner.id, payload)
+        return {
+            "message": "Cleaner location updated successfully",
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:

@@ -16,6 +16,7 @@ class Notification(Base):
     title = Column(String(255))
     message = Column(Text)
     notification_type = Column(String(50))
+    url = Column(Text)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

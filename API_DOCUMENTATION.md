@@ -52,6 +52,8 @@ V11__add_customer_vehicles.sql
 V12__soft_delete_addresses.sql
 V13__performance_indexes.sql
 V14__web_push_notifications.sql
+V15__service_extra_payment_fields.sql
+V16__auto_assignment.sql
 ```
 
 ## Phone Number Format
@@ -910,6 +912,149 @@ Supported `notification_type` values for assignment flows:
 - `booking_rejected`
 - `booking_assignment_accepted`
 - `booking_assignment_rejected`
+- `service_started`
+- `service_completed`
+
+## Auto Assignment APIs
+
+Washioo supports MVP automatic assignment for customer bookings. Auto assignment is designed for scheduled doorstep service, not taxi-style live bidding.
+
+### How Auto Assignment Works
+
+1. Customer creates a booking with `/washioo-api/services/book`.
+2. Backend creates the booking as `pending`.
+3. Backend immediately tries to find an approved, available cleaner near the booking address.
+4. If a cleaner is found, backend creates/updates `booking_assignments`, marks the booking `assigned`, stores assignment metadata, and notifies the cleaner.
+5. Cleaner accepts or rejects using existing assignment action APIs.
+6. If no cleaner is available, booking remains `pending`; admin can use the auto assign retry API or assign manually.
+
+### Cleaner Eligibility
+
+A cleaner is eligible only when:
+
+- `approval_status = approved`
+- `availability_status = available`
+- `auto_assign_enabled = true`
+- `current_latitude` and `current_longitude` are present
+- `last_location_at` is within the configured freshness window, currently 30 minutes
+- distance from booking address is within `service_radius_km`, or default radius when not set
+
+### Scoring
+
+The MVP score prefers nearby, highly rated cleaners with less active work:
+
+```txt
+ nearby distance score
++ rating score
+- active assignment penalty
+- small fairness penalty for very high completed-job count
+```
+
+Assignment metadata returned in booking/assignment responses:
+
+```json
+{
+  "auto_assigned": true,
+  "expires_at": "2026-05-09T10:30:00",
+  "assignment_rank": 1,
+  "assignment_score": 116.5,
+  "distance_km": 2.4
+}
+```
+
+### Update Cleaner Live Location
+
+```http
+PATCH /washioo-api/services/cleaner/location
+Authorization: Bearer <cleaner_access_token>
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "latitude": 17.385044,
+  "longitude": 78.486671
+}
+```
+
+Success:
+
+```json
+{
+  "message": "Cleaner location updated successfully",
+  "cleaner": {
+    "id": "cleaner_profile_uuid",
+    "availability_status": "available",
+    "current_latitude": 17.385044,
+    "current_longitude": 78.486671,
+    "last_location_at": "2026-05-09T10:00:00",
+    "auto_assign_enabled": true
+  }
+}
+```
+
+### Admin Retry Auto Assignment
+
+```http
+POST /washioo-api/services/admin/bookings/{booking_id}/auto-assign
+Authorization: Bearer <admin_access_token>
+```
+
+Success when assigned:
+
+```json
+{
+  "message": "Auto assignment completed",
+  "assigned": true,
+  "reason": "assigned",
+  "score": 116.5,
+  "distance_km": 2.4,
+  "candidates": 3,
+  "assignment": {
+    "id": "assignment_uuid",
+    "booking_id": "booking_uuid",
+    "cleaner_id": "cleaner_profile_uuid",
+    "assignment_status": "assigned",
+    "auto_assigned": true
+  }
+}
+```
+
+Success when no cleaner is available:
+
+```json
+{
+  "message": "Auto assignment could not find a cleaner",
+  "assigned": false,
+  "reason": "no_available_cleaner",
+  "candidates": 0,
+  "assignment": null
+}
+```
+
+### Booking Create Response With Auto Assignment
+
+`POST /washioo-api/services/book` now includes `assignment` when auto assignment succeeds:
+
+```json
+{
+  "message": "Booking created successfully",
+  "booking": {
+    "id": "booking_uuid",
+    "booking_reference": "WASH-123456",
+    "booking_status": "assigned",
+    "assignment": {
+      "id": "assignment_uuid",
+      "cleaner_id": "cleaner_profile_uuid",
+      "assignment_status": "assigned",
+      "auto_assigned": true,
+      "distance_km": 2.4
+    }
+  }
+}
+```
 
 ## Payment APIs
 

@@ -67,6 +67,7 @@ def notify_cleaner_booking_assigned(db, cleaner_user_id, assignment):
         "title": title,
         "message": message,
         "notification_type": "booking_assigned",
+        "url": f"/cleaner/bookings/{assignment.booking_id}",
     })
 
     data = {
@@ -74,7 +75,7 @@ def notify_cleaner_booking_assigned(db, cleaner_user_id, assignment):
         "type": "booking_assigned",
         "assignment_id": str(assignment.id),
         "booking_id": str(assignment.booking_id),
-        "url": f"/cleaner/assignments/{assignment.id}",
+        "url": f"/cleaner/bookings/{assignment.booking_id}",
     }
     send_web_push_to_user(db, cleaner_user_id, title, message, data)
     return notification
@@ -86,6 +87,7 @@ def notify_user_booking_status_change(db, user_id, title, message, notification_
         "title": title,
         "message": message,
         "notification_type": notification_type,
+        "url": url,
     })
 
     data = {
@@ -253,6 +255,7 @@ def format_notification(notification):
         "title": notification.title,
         "message": notification.message,
         "notification_type": notification.notification_type,
+        "url": notification.url,
         "is_read": bool(notification.is_read),
         "created_at": notification.created_at.isoformat() if notification.created_at else None,
     }

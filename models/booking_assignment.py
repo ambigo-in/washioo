@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, String, DateTime, ForeignKey, Index, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, Integer, Numeric, String, DateTime, ForeignKey, Index, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -12,13 +12,19 @@ class BookingAssignment(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id", ondelete="CASCADE"), unique=True, nullable=False)
     cleaner_id = Column(UUID(as_uuid=True), ForeignKey("cleaner_profiles.id", ondelete="RESTRICT"), nullable=False)
-    assigned_by_admin = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    assigned_by_admin = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
     assigned_at = Column(DateTime, default=datetime.utcnow)
     accepted_at = Column(DateTime)
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
     assignment_status = Column(String(30), default="assigned")
     cleaner_notes = Column(Text)
+    expires_at = Column(DateTime)
+    rejected_reason = Column(Text)
+    auto_assigned = Column(Boolean, default=False, nullable=False)
+    assignment_rank = Column(Integer)
+    assignment_score = Column(Numeric(8, 2))
+    distance_km = Column(Numeric(8, 2))
 
     booking = relationship("Booking", back_populates="assignment")
     cleaner = relationship("CleanerProfile", back_populates="assignments")
@@ -34,4 +40,5 @@ class BookingAssignment(Base):
         Index("idx_assignments_booking", "booking_id"),
         Index("idx_assignments_cleaner_status_assigned", "cleaner_id", "assignment_status", "assigned_at"),
         Index("idx_assignments_status_assigned", "assignment_status", "assigned_at"),
+        Index("idx_assignments_auto_assigned", "auto_assigned", "assignment_status"),
     )
