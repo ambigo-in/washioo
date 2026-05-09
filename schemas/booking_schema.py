@@ -143,18 +143,36 @@ class CreateCleanerProfileRequest(BaseModel):
     user_id: str
     vehicle_type: Optional[str] = None
     aadhaar_number: str = Field(..., pattern=r"^\d{12}$")
-    driving_license_number: Optional[str] = Field(default=None, min_length=6, max_length=30)
+    driving_license_number: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9]{15,16}$")
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = "pending"
     availability_status: Optional[Literal["offline", "available", "busy"]] = "offline"
 
+    @field_validator("driving_license_number", mode="before")
+    @classmethod
+    def normalize_optional_driving_license(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip().upper().replace(" ", "")
+
 class UpdateCleanerProfileRequest(BaseModel):
     vehicle_type: Optional[str] = None
     aadhaar_number: Optional[str] = Field(default=None, pattern=r"^\d{12}$")
-    driving_license_number: Optional[str] = Field(default=None, min_length=6, max_length=30)
+    driving_license_number: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9]{15,16}$")
     service_radius_km: Optional[Decimal] = None
     approval_status: Optional[Literal["pending", "approved", "rejected", "suspended"]] = None
     availability_status: Optional[Literal["offline", "available", "busy"]] = None
+
+    @field_validator("driving_license_number", mode="before")
+    @classmethod
+    def normalize_optional_driving_license(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip().upper().replace(" ", "")
 
 class UpdateCleanerAvailabilityRequest(BaseModel):
     availability_status: Literal["offline", "available", "busy"]

@@ -58,7 +58,19 @@ class RoleSignupRequest(BaseModel):
 
 class CleanerSignupRequest(RoleSignupRequest):
     aadhaar_number: str = Field(..., pattern=r"^\d{12}$")
-    driving_license_number: str | None = Field(default=None, min_length=6, max_length=30)
+    driving_license_number: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9]{15,16}$",
+    )
+
+    @field_validator("driving_license_number", mode="before")
+    @classmethod
+    def normalize_optional_driving_license(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip().upper().replace(" ", "")
 
 class CreateAdminRequest(BaseModel):
     full_name: str
