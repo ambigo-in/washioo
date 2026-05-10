@@ -49,6 +49,10 @@ def get_customer_bookings(db, customer_id, limit=50, offset=0):
         .all()
     )
 
+def count_customer_bookings(db, customer_id):
+    """Count all bookings for a customer before pagination."""
+    return db.query(Booking).filter(Booking.customer_id == customer_id).count()
+
 def get_all_bookings(db, limit=50, offset=0):
     """Get all bookings (admin view)"""
     return (
@@ -66,6 +70,10 @@ def get_all_bookings(db, limit=50, offset=0):
         .limit(limit)
         .all()
     )
+
+def count_all_bookings(db):
+    """Count all bookings before pagination."""
+    return db.query(Booking).count()
 
 def get_bookings_by_status(db, status, limit=50, offset=0):
     """Get bookings by status (admin view)"""
@@ -85,6 +93,10 @@ def get_bookings_by_status(db, status, limit=50, offset=0):
         .limit(limit)
         .all()
     )
+
+def count_bookings_by_status(db, status):
+    """Count bookings by status before pagination."""
+    return db.query(Booking).filter(Booking.booking_status == status).count()
 
 def get_customer_booking_by_id(db, customer_id, booking_id):
     """Get one booking that belongs to a customer"""

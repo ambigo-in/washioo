@@ -25,6 +25,8 @@ from repositories.address_repository import create_address, get_user_addresses, 
 from services.booking_service import (
     create_new_booking, get_customer_bookings_service, 
     get_all_bookings_service, format_admin_booking, format_customer_booking,
+    count_customer_bookings_service, count_all_bookings_service,
+    get_bookings_by_status_service, count_bookings_by_status_service,
     get_customer_booking_service, update_customer_booking_service,
     cancel_customer_booking_service, get_admin_booking_service,
     update_admin_booking_service, create_cleaner_profile_service,
@@ -300,7 +302,7 @@ def get_my_bookings(
         return {
             "message": "Bookings fetched successfully",
             "bookings": bookings_list,
-            "total": len(bookings_list)
+            "total": count_customer_bookings_service(db, current_user.id)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -379,7 +381,7 @@ def get_all_bookings_admin(
         return {
             "message": "All bookings fetched successfully",
             "bookings": bookings_list,
-            "total": len(bookings_list)
+            "total": count_all_bookings_service(db)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -436,7 +438,7 @@ def get_customer_bookings_admin(
             "message": "Customer bookings fetched successfully",
             "customer_id": customer_id,
             "bookings": bookings_list,
-            "total": len(bookings_list)
+            "total": count_customer_bookings_service(db, customer_id)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -500,8 +502,7 @@ def get_bookings_by_status_admin(
         )
     
     try:
-        from repositories.booking_repository import get_bookings_by_status
-        bookings = get_bookings_by_status(db, status, limit, offset)
+        bookings = get_bookings_by_status_service(db, status, limit, offset)
         
         bookings_list = [format_admin_booking(booking) for booking in bookings]
         
@@ -509,7 +510,7 @@ def get_bookings_by_status_admin(
             "message": f"Bookings with status '{status}' fetched successfully",
             "status": status,
             "bookings": bookings_list,
-            "total": len(bookings_list)
+            "total": count_bookings_by_status_service(db, status)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")

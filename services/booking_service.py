@@ -2,7 +2,8 @@ from datetime import datetime
 import uuid
 from repositories.booking_repository import (
     create_booking, get_booking_by_id, get_customer_bookings, get_all_bookings,
-    get_customer_booking_by_id, update_booking
+    get_customer_booking_by_id, update_booking, get_bookings_by_status,
+    count_customer_bookings, count_all_bookings, count_bookings_by_status
 )
 from repositories.service_repository import get_service_by_id
 from repositories.address_repository import get_address_by_id, create_address
@@ -186,9 +187,25 @@ def get_customer_bookings_service(db, customer_id, limit=50, offset=0):
     """Get all bookings for a customer"""
     return get_customer_bookings(db, customer_id, limit, offset)
 
+def count_customer_bookings_service(db, customer_id):
+    """Count all bookings for a customer before pagination."""
+    return count_customer_bookings(db, customer_id)
+
 def get_all_bookings_service(db, limit=50, offset=0):
     """Get all bookings (admin view)"""
     return get_all_bookings(db, limit, offset)
+
+def count_all_bookings_service(db):
+    """Count all bookings before pagination."""
+    return count_all_bookings(db)
+
+def get_bookings_by_status_service(db, status, limit=50, offset=0):
+    """Get bookings by status (admin view)."""
+    return get_bookings_by_status(db, status, limit, offset)
+
+def count_bookings_by_status_service(db, status):
+    """Count bookings by status before pagination."""
+    return count_bookings_by_status(db, status)
 
 def get_customer_booking_service(db, customer_id, booking_id):
     booking = get_customer_booking_by_id(db, customer_id, booking_id)
