@@ -13,6 +13,7 @@ from repositories.notification_repository import (
     mark_push_subscription_used,
     upsert_push_subscription,
 )
+from utils.datetime_utils import utc_isoformat
 from services.realtime_service import emit_user_event
 
 logger = logging.getLogger(__name__)
@@ -274,5 +275,5 @@ def format_notification(notification):
         "notification_type": notification.notification_type,
         "url": notification.url,
         "is_read": bool(notification.is_read),
-        "created_at": notification.created_at.isoformat() if notification.created_at else None,
+        "created_at": utc_isoformat(notification.created_at),
     }

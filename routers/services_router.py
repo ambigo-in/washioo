@@ -42,6 +42,7 @@ from services.booking_service import (
     complete_assignment_service, format_cleaner_profile, format_assignment,
     format_assignment_summary,
 )
+from utils.datetime_utils import utc_isoformat
 
 
 PUBLIC_TAG = "Public APIs"
@@ -279,7 +280,7 @@ def book_service(
                 "booking_status": booking.booking_status,
                 "assignment": format_assignment_summary(booking.assignment) if booking.assignment else None,
                 "estimated_price": float(booking.estimated_price),
-                "created_at": booking.created_at.isoformat()
+                "created_at": utc_isoformat(booking.created_at)
             }
         }
     except Exception as e:

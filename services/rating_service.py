@@ -11,6 +11,7 @@ from models.booking_assignment import BookingAssignment
 from models.cleaner_profile import CleanerProfile
 from models.rating import Rating
 from models.user import User
+from utils.datetime_utils import utc_isoformat
 
 
 BLIND_REVIEW_MODE = True
@@ -224,7 +225,7 @@ def _format_rating(rating: Rating) -> dict:
         "reviewer_role": rating.reviewer_role,
         "rating": float(rating.rating),
         "comment": rating.comment,
-        "created_at": rating.created_at,
+        "created_at": utc_isoformat(rating.created_at),
         "reviewee_name": rating.reviewee.full_name if rating.reviewee else None,
     }
 

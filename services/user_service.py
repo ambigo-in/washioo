@@ -8,6 +8,7 @@ from repositories.user_repository import (
     delete_user,
 )
 from repositories.role_repository import get_role_by_name
+from utils.datetime_utils import utc_isoformat
 
 
 def get_user_profile(user: User):
@@ -21,7 +22,7 @@ def get_user_profile(user: User):
         "average_rating": float(user.average_rating) if user.average_rating is not None else 0,
         "total_ratings": user.total_ratings or 0,
         "roles": [user_role.role.role_name for user_role in user.user_roles],
-        "created_at": user.created_at
+        "created_at": utc_isoformat(user.created_at)
     }
 
 

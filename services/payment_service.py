@@ -24,6 +24,7 @@ from repositories.payment_repository import (
 )
 from repositories.user_repository import get_user_by_id
 from repositories.booking_repository import get_booking_by_id, get_customer_booking_by_id
+from utils.datetime_utils import utc_isoformat
 
 
 COLLECTION_STATUSES = ["pending_collection", "collected", "split_done"]
@@ -40,9 +41,9 @@ def format_payment(payment):
         "amount": float(payment.amount) if payment.amount else 0,
         "payment_status": payment.payment_status,
         "collected_by_cleaner": payment.collected_by_cleaner,
-        "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
-        "created_at": payment.created_at.isoformat(),
-        "updated_at": payment.updated_at.isoformat()
+        "paid_at": utc_isoformat(payment.paid_at),
+        "created_at": utc_isoformat(payment.created_at),
+        "updated_at": utc_isoformat(payment.updated_at)
     }
 
 
@@ -54,16 +55,16 @@ def format_collection_payment(payment):
         "collected_amount": float(payment.collected_amount) if payment.collected_amount is not None else None,
         "payment_type": payment.payment_type,
         "collected_by": str(payment.collected_by) if payment.collected_by else None,
-        "collected_at": payment.collected_at.isoformat() if payment.collected_at else None,
+        "collected_at": utc_isoformat(payment.collected_at),
         "cleaner_share": float(payment.cleaner_share) if payment.cleaner_share is not None else None,
         "admin_share": float(payment.admin_share) if payment.admin_share is not None else None,
         "split_updated_by": str(payment.split_updated_by) if payment.split_updated_by else None,
-        "split_updated_at": payment.split_updated_at.isoformat() if payment.split_updated_at else None,
+        "split_updated_at": utc_isoformat(payment.split_updated_at),
         "payout_released": bool(getattr(payment, "payout_released", False)),
         "cleaner_handover_status": getattr(payment, "cleaner_handover_status", "pending"),
         "status": payment.status or "pending_collection",
-        "created_at": payment.created_at.isoformat(),
-        "updated_at": payment.updated_at.isoformat(),
+        "created_at": utc_isoformat(payment.created_at),
+        "updated_at": utc_isoformat(payment.updated_at),
     }
 
 
@@ -267,7 +268,7 @@ def get_cleaner_earnings(db, cleaner_user_id):
         "settled": float(settled),
         "admin_total": float(admin_total),
         "pending_payout": float(admin_due),
-        "last_updated": last_updated.isoformat() if last_updated else None,
+        "last_updated": utc_isoformat(last_updated),
     }
 
 

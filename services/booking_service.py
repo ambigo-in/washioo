@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import uuid
 from repositories.booking_repository import (
     create_booking, get_booking_by_id, get_customer_bookings, get_all_bookings,
@@ -41,12 +42,22 @@ from services.notification_service import (
     notify_admin_booking_assignment_rejected,
 )
 from services.realtime_service import emit_role_event, emit_user_event
+from utils.datetime_utils import utc_isoformat
 import logging
 
 logger = logging.getLogger(__name__)
 
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
 ASSIGNMENT_STATUSES = ["assigned", "accepted", "in_progress", "rejected", "completed", "cancelled"]
+BOOKING_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
+def validate_future_schedule(scheduled_date, scheduled_time):
+    schedule = datetime.combine(scheduled_date, scheduled_time).replace(
+        tzinfo=BOOKING_TIMEZONE
+    )
+    current_minute = datetime.now(BOOKING_TIMEZONE).replace(second=0, microsecond=0)
+    if schedule < current_minute:
+        raise Exception("Scheduled date and time cannot be in the past")
 
 def generate_booking_reference():
     """Generate unique booking reference"""
@@ -54,6 +65,7 @@ def generate_booking_reference():
 
 def create_new_booking(db, customer_id, payload):
     """Create a new booking"""
+    validate_future_schedule(payload.scheduled_date, payload.scheduled_time)
     
     # Validate service exists
     service = get_service_by_id(db, payload.service_category_id)
@@ -238,6 +250,10 @@ def update_customer_booking_service(db, customer_id, booking_id, payload):
         raise Exception("Only pending bookings can be updated by customer")
 
     booking_data = payload.model_dump(exclude_unset=True)
+    if "scheduled_date" in booking_data or "scheduled_time" in booking_data:
+        next_scheduled_date = booking_data.get("scheduled_date", booking.scheduled_date)
+        next_scheduled_time = booking_data.get("scheduled_time", booking.scheduled_time)
+        validate_future_schedule(next_scheduled_date, next_scheduled_time)
 
     if "service_category_id" in booking_data:
         service = get_service_by_id(db, booking_data["service_category_id"])
@@ -309,6 +325,10 @@ def update_admin_booking_service(db, booking_id, payload):
         raise Exception("Booking not found")
 
     booking_data = payload.model_dump(exclude_unset=True)
+    if "scheduled_date" in booking_data or "scheduled_time" in booking_data:
+        next_scheduled_date = booking_data.get("scheduled_date", booking.scheduled_date)
+        next_scheduled_time = booking_data.get("scheduled_time", booking.scheduled_time)
+        validate_future_schedule(next_scheduled_date, next_scheduled_time)
 
     if "booking_status" in booking_data:
         raise Exception("Use explicit lifecycle endpoints to change booking status")
@@ -688,7 +708,7 @@ def format_admin_booking(booking):
         "assignment": format_assignment_summary(booking.assignment),
         "vehicle_details": format_vehicle_details(booking),
         "payment": format_payment_summary(booking),
-        "created_at": booking.created_at.isoformat()
+        "created_at": utc_isoformat(booking.created_at)
     }
 
 def format_cleaner_booking_detail(booking):
@@ -711,8 +731,8 @@ def format_customer_vehicle(vehicle):
         "model": vehicle.model,
         "license_plate": vehicle.license_plate,
         "is_default": bool(vehicle.is_default),
-        "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
-        "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None,
+        "created_at": utc_isoformat(vehicle.created_at),
+        "updated_at": utc_isoformat(vehicle.updated_at),
     }
 
 def format_payment_summary(booking):
@@ -735,7 +755,7 @@ def format_payment_summary(booking):
             "cleaner_handover_status": getattr(payment, "cleaner_handover_status", "pending"),
             "transaction_reference": payment.transaction_reference,
             "collected_by_cleaner": payment.collected_by_cleaner,
-            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+            "paid_at": utc_isoformat(payment.paid_at),
         }
 
     amount = booking.final_price if booking.final_price is not None else booking.estimated_price
@@ -796,7 +816,7 @@ def format_customer_booking(booking):
         "assignment": format_assignment_summary(booking.assignment),
         "vehicle_details": format_vehicle_details(booking),
         "payment": format_customer_payment_summary(booking),
-        "created_at": booking.created_at.isoformat()
+        "created_at": utc_isoformat(booking.created_at)
     }
 
 def format_address(address):
@@ -850,14 +870,14 @@ def format_cleaner_profile(cleaner, include_sensitive_identity=False):
         "availability_status": cleaner.availability_status,
         "current_latitude": float(cleaner.current_latitude) if getattr(cleaner, "current_latitude", None) is not None else None,
         "current_longitude": float(cleaner.current_longitude) if getattr(cleaner, "current_longitude", None) is not None else None,
-        "last_location_at": cleaner.last_location_at.isoformat() if getattr(cleaner, "last_location_at", None) else None,
-        "last_available_at": cleaner.last_available_at.isoformat() if getattr(cleaner, "last_available_at", None) else None,
+        "last_location_at": utc_isoformat(getattr(cleaner, "last_location_at", None)),
+        "last_available_at": utc_isoformat(getattr(cleaner, "last_available_at", None)),
         "auto_assign_enabled": bool(getattr(cleaner, "auto_assign_enabled", True)),
         "rating": float(cleaner.rating) if cleaner.rating is not None else 0,
         "average_rating": float(cleaner.average_rating) if getattr(cleaner, "average_rating", None) is not None else 0,
         "total_ratings": cleaner.total_ratings or 0,
         "total_jobs_completed": cleaner.total_jobs_completed or 0,
-        "created_at": cleaner.created_at.isoformat() if cleaner.created_at else None,
+        "created_at": utc_isoformat(cleaner.created_at),
     }
     if include_sensitive_identity:
         profile.update({
@@ -896,12 +916,12 @@ def format_assignment_summary(assignment):
             else None
         ),
         "assignment_status": assignment.assignment_status,
-        "assigned_at": assignment.assigned_at.isoformat() if assignment.assigned_at else None,
-        "accepted_at": assignment.accepted_at.isoformat() if assignment.accepted_at else None,
-        "started_at": assignment.started_at.isoformat() if assignment.started_at else None,
-        "completed_at": assignment.completed_at.isoformat() if assignment.completed_at else None,
+        "assigned_at": utc_isoformat(assignment.assigned_at),
+        "accepted_at": utc_isoformat(assignment.accepted_at),
+        "started_at": utc_isoformat(assignment.started_at),
+        "completed_at": utc_isoformat(assignment.completed_at),
         "cleaner_notes": assignment.cleaner_notes,
-        "expires_at": assignment.expires_at.isoformat() if getattr(assignment, "expires_at", None) else None,
+        "expires_at": utc_isoformat(getattr(assignment, "expires_at", None)),
         "auto_assigned": bool(getattr(assignment, "auto_assigned", False)),
         "assignment_rank": assignment.assignment_rank,
         "assignment_score": float(assignment.assignment_score) if getattr(assignment, "assignment_score", None) is not None else None,
