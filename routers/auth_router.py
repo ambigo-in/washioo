@@ -31,7 +31,7 @@ from services.booking_service import (
     get_customer_bookings_service,
     list_cleaner_assignments_service,
     format_customer_booking,
-    format_assignment,
+    format_cleaner_assignment,
     format_cleaner_profile,
 )
 from services.otp_service import create_and_send_otp
@@ -320,7 +320,7 @@ def cleaner_jobs(
     offset: int = Query(0, ge=0),
 ):
     assignments = list_cleaner_assignments_service(db, current_cleaner.id, limit=limit, offset=offset)
-    assignment_list = [format_assignment(assignment) for assignment in assignments]
+    assignment_list = [format_cleaner_assignment(assignment) for assignment in assignments]
     return {
         "message": "Cleaner jobs fetched successfully",
         "assignments": assignment_list,

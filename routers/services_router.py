@@ -40,6 +40,7 @@ from services.booking_service import (
     get_cleaner_assignment_service, accept_assignment_service,
     reject_assignment_service, start_assignment_service,
     complete_assignment_service, format_cleaner_profile, format_assignment,
+    format_cleaner_assignment,
     format_assignment_summary,
 )
 from utils.datetime_utils import utc_isoformat
@@ -723,7 +724,7 @@ def list_cleaner_assignments(
     """Cleaner fetch assigned bookings/services"""
     try:
         assignments = list_cleaner_assignments_service(db, current_cleaner.id, status, limit, offset)
-        assignment_list = [format_assignment(assignment) for assignment in assignments]
+        assignment_list = [format_cleaner_assignment(assignment) for assignment in assignments]
         return {
             "message": "Cleaner assignments fetched successfully",
             "assignments": assignment_list,
@@ -744,7 +745,7 @@ def get_cleaner_assignment(
         assignment = get_cleaner_assignment_service(db, current_cleaner.id, assignment_id)
         return {
             "message": "Assignment fetched successfully",
-            "assignment": format_assignment(assignment)
+            "assignment": format_cleaner_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=404, detail="Request could not be processed")
@@ -762,7 +763,7 @@ def accept_assignment(
         assignment = accept_assignment_service(db, current_cleaner.id, assignment_id, payload)
         return {
             "message": "Assignment accepted successfully",
-            "assignment": format_assignment(assignment)
+            "assignment": format_cleaner_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -780,7 +781,7 @@ def reject_assignment(
         assignment = reject_assignment_service(db, current_cleaner.id, assignment_id, payload)
         return {
             "message": "Assignment rejected successfully",
-            "assignment": format_assignment(assignment)
+            "assignment": format_cleaner_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -798,7 +799,7 @@ def start_assignment(
         assignment = start_assignment_service(db, current_cleaner.id, assignment_id, payload)
         return {
             "message": "Assignment started successfully",
-            "assignment": format_assignment(assignment)
+            "assignment": format_cleaner_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")
@@ -816,7 +817,7 @@ def complete_assignment(
         assignment = complete_assignment_service(db, current_cleaner.id, assignment_id, payload)
         return {
             "message": "Assignment completed successfully",
-            "assignment": format_assignment(assignment)
+            "assignment": format_cleaner_assignment(assignment)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail="Request could not be processed")

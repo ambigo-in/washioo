@@ -1,5 +1,5 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import uuid
 from repositories.booking_repository import (
     create_booking, get_booking_by_id, get_customer_bookings, get_all_bookings,
@@ -47,9 +47,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def get_booking_timezone():
+    try:
+        return ZoneInfo("Asia/Kolkata")
+    except ZoneInfoNotFoundError:
+        return timezone(timedelta(hours=5, minutes=30), "Asia/Kolkata")
+
+
 BOOKING_STATUSES = ["pending", "assigned", "accepted", "in_progress", "completed", "cancelled"]
 ASSIGNMENT_STATUSES = ["assigned", "accepted", "in_progress", "rejected", "completed", "cancelled"]
-BOOKING_TIMEZONE = ZoneInfo("Asia/Kolkata")
+CLEANER_CONTACT_VISIBLE_STATUSES = {"accepted", "in_progress"}
+BOOKING_TIMEZONE = get_booking_timezone()
 
 def validate_future_schedule(scheduled_date, scheduled_time):
     schedule = datetime.combine(scheduled_date, scheduled_time).replace(
@@ -717,8 +725,25 @@ def format_admin_booking(booking):
         "created_at": utc_isoformat(booking.created_at)
     }
 
+def cleaner_can_view_customer_contact(assignment):
+    return bool(
+        assignment
+        and assignment.assignment_status in CLEANER_CONTACT_VISIBLE_STATUSES
+    )
+
+
+def redact_customer_contact(booking_data):
+    booking_data["customer_name"] = None
+    booking_data["customer_phone"] = None
+    booking_data["customer_email"] = None
+    return booking_data
+
+
 def format_cleaner_booking_detail(booking):
-    return format_admin_booking(booking)
+    booking_data = format_admin_booking(booking)
+    if not cleaner_can_view_customer_contact(booking.assignment):
+        redact_customer_contact(booking_data)
+    return booking_data
 
 def format_vehicle_details(booking):
     return {
@@ -945,3 +970,14 @@ def format_assignment(assignment):
         "cleaner": format_cleaner_profile(assignment.cleaner),
         "booking": format_admin_booking(booking) if booking else None,
     }
+
+
+def format_cleaner_assignment(assignment):
+    assignment_data = format_assignment(assignment)
+    if (
+        assignment_data
+        and assignment_data.get("booking")
+        and not cleaner_can_view_customer_contact(assignment)
+    ):
+        redact_customer_contact(assignment_data["booking"])
+    return assignment_data
