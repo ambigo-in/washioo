@@ -488,6 +488,8 @@ def get_cleaner_assignment_service(db, user_id, assignment_id):
 
 def accept_assignment_service(db, user_id, assignment_id, payload):
     assignment = get_cleaner_assignment_service(db, user_id, assignment_id)
+    if assignment.assignment_status in ["accepted", "in_progress", "completed"]:
+        return assignment
     if assignment.assignment_status != "assigned":
         raise Exception("Only assigned bookings can be accepted")
     if assignment.booking and assignment.booking.booking_status != "assigned":
@@ -595,6 +597,8 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
 
 def start_assignment_service(db, user_id, assignment_id, payload):
     assignment = get_cleaner_assignment_service(db, user_id, assignment_id)
+    if assignment.assignment_status in ["in_progress", "completed"]:
+        return assignment
     if assignment.assignment_status != "accepted":
         raise Exception("Only accepted assignments can be started")
     if assignment.started_at:
@@ -636,6 +640,8 @@ def start_assignment_service(db, user_id, assignment_id, payload):
 
 def complete_assignment_service(db, user_id, assignment_id, payload):
     assignment = get_cleaner_assignment_service(db, user_id, assignment_id)
+    if assignment.assignment_status == "completed":
+        return assignment
     if not assignment.started_at:
         raise Exception("Assignment must be started before completion")
     if assignment.assignment_status != "in_progress":
