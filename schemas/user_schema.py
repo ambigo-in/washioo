@@ -12,6 +12,8 @@ class UserResponse(BaseModel):
     email: Optional[EmailStr]
     is_verified: bool
     is_active: bool
+    terms_accepted: bool
+    terms_accepted_at: Optional[datetime] = None
     roles: List[str]
     created_at: datetime
 

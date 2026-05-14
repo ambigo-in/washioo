@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN DEFAULT TRUE,
     profile_image_url TEXT,
     last_login TIMESTAMP,
+    terms_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+    terms_accepted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -45,6 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX idx_users_phone ON users(phone);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_active ON users(is_active);
+CREATE INDEX idx_users_terms_accepted ON users(terms_accepted);
 
 -- ============================================================
 -- 3. USER ROLES MAPPING

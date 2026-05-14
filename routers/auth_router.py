@@ -26,7 +26,7 @@ from services.auth_service import (
 from services.token_service import refresh_user_token, logout_user
 from core.dependencies import get_current_user
 from services.user_service import get_user_profile
-from services.user_service import update_user_details_service
+from services.user_service import accept_terms_service, update_user_details_service
 from services.booking_service import (
     get_customer_bookings_service,
     list_cleaner_assignments_service,
@@ -59,7 +59,9 @@ def _token_response(message: str, access: str, refresh: str, account_type: str |
     if account_type:
         response["account_type"] = account_type
     if user:
-        response["user"] = get_user_profile(user)
+        user_profile = get_user_profile(user)
+        response["user"] = user_profile
+        response["terms_accepted"] = user_profile["terms_accepted"]
     if extra:
         response.update(extra)
     return response
@@ -297,8 +299,18 @@ def logout_api(payload: LogoutRequest, db: Session = Depends(get_db), current_us
         _raise_auth_error(e)
 
 
+@router.post("/accept-terms", tags=[AUTH_TAG])
+def accept_terms_api(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    user = accept_terms_service(db, current_user)
+    return {
+        "message": "Terms accepted successfully",
+        "terms_accepted": True,
+        "user": user,
+    }
+
+
 @router.get("/me", tags=[PROFILE_TAG])
-def get_user_details(current_user=Depends(require_roles(["customer", "cleaner", "admin"]))):
+def get_user_details(current_user=Depends(get_current_user)):
     return {
         "message": "User details fetched successfully",
         "user": get_user_profile(current_user)

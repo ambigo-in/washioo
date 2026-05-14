@@ -15,6 +15,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     profile_image_url = Column(String)
     last_login = Column(DateTime)
+    terms_accepted = Column(Boolean, default=False, nullable=False)
+    terms_accepted_at = Column(DateTime)
     average_rating = Column(Numeric(3, 2), default=0, nullable=False)
     total_ratings = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
