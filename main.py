@@ -94,6 +94,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 API_PREFIX = "/washioo-api"
 
+
+def _is_public_cacheable_api_request(request: Request) -> bool:
+    path = request.url.path.rstrip("/")
+    return (
+        request.method == "GET"
+        and not request.headers.get("authorization")
+        and (
+            path == f"{API_PREFIX}/services"
+            or path.startswith(f"{API_PREFIX}/services/service-categories/")
+        )
+    )
+
 app = FastAPI(
     title="Car Wash Service Portal API",
     description="Car Wash Service Backend",
@@ -105,6 +117,24 @@ api_router = APIRouter(prefix=API_PREFIX)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+
+@app.middleware("http")
+async def api_cache_control_middleware(request: Request, call_next):
+    response = await call_next(request)
+
+    if not request.url.path.startswith(API_PREFIX):
+        return response
+
+    if _is_public_cacheable_api_request(request) and response.status_code < 400:
+        response.headers["Cache-Control"] = (
+            "public, max-age=300, s-maxage=600, stale-while-revalidate=60"
+        )
+        response.headers["Vary"] = "Accept-Encoding"
+        return response
+
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.exception_handler(RequestValidationError)
