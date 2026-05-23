@@ -12,6 +12,7 @@ class Settings:
     DATABASE_POOL_SIZE = int(os.getenv("DATABASE_POOL_SIZE", 20))
     DATABASE_MAX_OVERFLOW = int(os.getenv("DATABASE_MAX_OVERFLOW", 10))
     DATABASE_POOL_RECYCLE_SECONDS = int(os.getenv("DATABASE_POOL_RECYCLE_SECONDS", 1800))
+    DATABASE_POOL_TIMEOUT_SECONDS = int(os.getenv("DATABASE_POOL_TIMEOUT_SECONDS", 10))
 
     SECRET_KEY = os.getenv("SECRET_KEY")
     PREVIOUS_SECRET_KEYS = [
@@ -101,6 +102,8 @@ class Settings:
             raise RuntimeError("DATABASE_POOL_SIZE must be at least 1")
         if self.DATABASE_MAX_OVERFLOW < 0:
             raise RuntimeError("DATABASE_MAX_OVERFLOW cannot be negative")
+        if self.DATABASE_POOL_TIMEOUT_SECONDS < 1:
+            raise RuntimeError("DATABASE_POOL_TIMEOUT_SECONDS must be at least 1")
         if self.OTP_LENGTH < 4:
             raise RuntimeError("OTP_LENGTH must be at least 4")
         if self.OTP_EXPIRY_MINUTES < 1:
