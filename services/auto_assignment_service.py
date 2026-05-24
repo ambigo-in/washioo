@@ -140,9 +140,12 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
             "assignment": existing_assignment,
         }
 
+    booking_customer_id = str(booking.customer_id) if booking.customer_id else None
     candidates = []
     for cleaner in get_auto_assignable_cleaners(db):
         if str(cleaner.id) in excluded:
+            continue
+        if booking_customer_id and str(cleaner.user_id) == booking_customer_id:
             continue
         scored = _score_cleaner(db, cleaner, booking)
         if scored:
@@ -211,6 +214,7 @@ def auto_assign_booking(db, booking_id, excluded_cleaner_ids=None, assigned_by_a
         if assignment.cleaner and assignment.cleaner.user_id:
             notify_cleaner_booking_assigned(db, assignment.cleaner.user_id, assignment)
     except Exception as exc:
+        db.rollback()
         logger.warning("Failed to notify auto-assigned cleaner for booking %s: %s", booking_id, exc)
 
     event_data = {

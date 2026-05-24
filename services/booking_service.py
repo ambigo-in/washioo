@@ -436,6 +436,8 @@ def assign_booking_to_cleaner_service(db, booking_id, admin_id, payload):
     cleaner = get_cleaner_profile_by_id(db, payload.cleaner_id)
     if not cleaner:
         raise Exception("Cleaner profile not found")
+    if str(cleaner.user_id) == str(booking.customer_id):
+        raise Exception("A booking cannot be assigned to the customer's own cleaner profile")
     if cleaner.approval_status != "approved":
         raise Exception("Cleaner is not approved")
     if cleaner.availability_status != "available":
@@ -533,6 +535,7 @@ def accept_assignment_service(db, user_id, assignment_id, payload):
             )
         notify_admin_booking_assignment_accepted(db, assignment)
     except Exception as exc:
+        db.rollback()
         logger.warning("Failed to send accept notifications for assignment %s: %s", assignment_id, exc)
 
     emit_role_event(
@@ -587,6 +590,7 @@ def reject_assignment_service(db, user_id, assignment_id, payload):
             )
         notify_admin_booking_assignment_rejected(db, assignment)
     except Exception as exc:
+        db.rollback()
         logger.warning("Failed to send reject notifications for assignment %s: %s", assignment_id, exc)
 
     emit_role_event(
@@ -634,6 +638,7 @@ def start_assignment_service(db, user_id, assignment_id, payload):
                 },
             )
     except Exception as exc:
+        db.rollback()
         logger.warning("Failed to send start notification for assignment %s: %s", assignment_id, exc)
     emit_role_event(
         "admin",
@@ -683,6 +688,7 @@ def complete_assignment_service(db, user_id, assignment_id, payload):
                 },
             )
         except Exception as exc:
+            db.rollback()
             logger.warning("Failed to send completion notification for assignment %s: %s", assignment_id, exc)
 
     cleaner = get_cleaner_profile_by_id(db, assignment.cleaner_id)

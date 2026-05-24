@@ -92,6 +92,10 @@ def notify_cleaner_booking_assigned(db, cleaner_user_id, assignment):
 
 
 def notify_user_booking_status_change(db, user_id, title, message, notification_type, booking_id=None, url=None):
+    if not user_id:
+        logger.info("Skipping %s notification without recipient user", notification_type)
+        return None
+
     notification = create_notification(db, {
         "user_id": user_id,
         "title": title,
