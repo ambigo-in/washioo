@@ -110,6 +110,16 @@ def send_otp_api(request: Request):
         detail="Use role-specific OTP endpoints"
     )
 
+
+@router.get("/config", tags=[AUTH_TAG])
+def auth_config():
+    return {
+        "cleaner": {
+            "driving_license_required": settings.DRIVING_LICENSE_REQUIRED,
+        }
+    }
+
+
 @router.post("/customer/send-otp", tags=[AUTH_TAG])
 @limiter.limit(settings.SEND_OTP_RATE_LIMIT)
 async def send_customer_otp_api(request: Request, payload: SendOTPRequest, db: Session = Depends(get_db)):

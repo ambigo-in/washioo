@@ -14,9 +14,25 @@ class CleanerProfile(Base):
     vehicle_type = Column(String(50))
     aadhaar_number = Column(String(20))
     aadhaar_number_hash = Column(String(64))
+    aadhaar_image_url = Column(String)
     driving_license_number = Column(String(100))
     driving_license_number_hash = Column(String(64))
+    driving_license_image_url = Column(String)
     government_id_number = Column(String(100))
+    profile_photo_url = Column(String)
+    verification_status = Column(String(40), default="pending")
+    document_review_status = Column(String(40), default="not_submitted")
+    document_rejection_reason = Column(String)
+    document_resubmission_required = Column(Boolean, default=False, nullable=False)
+    documents_submitted_at = Column(DateTime)
+    documents_verified_at = Column(DateTime)
+    documents_reviewed_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    pending_aadhaar_number = Column(String(20))
+    pending_aadhaar_number_hash = Column(String(64))
+    pending_aadhaar_image_url = Column(String)
+    pending_driving_license_number = Column(String(100))
+    pending_driving_license_number_hash = Column(String(64))
+    pending_driving_license_image_url = Column(String)
     service_radius_km = Column(Numeric(8, 2))
     approval_status = Column(String(30), default="pending")
     availability_status = Column(String(30), default="offline")
@@ -32,7 +48,8 @@ class CleanerProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = relationship("User", back_populates="cleaner_profile")
+    user = relationship("User", back_populates="cleaner_profile", foreign_keys=[user_id])
+    document_reviewer = relationship("User", foreign_keys=[documents_reviewed_by])
     assignments = relationship("BookingAssignment", back_populates="cleaner")
     earnings = relationship("CleanerEarning", back_populates="cleaner", uselist=False, cascade="all, delete-orphan")
 
@@ -45,8 +62,17 @@ class CleanerProfile(Base):
             "availability_status IN ('offline', 'available', 'busy')",
             name="chk_cleaner_availability_status",
         ),
+        CheckConstraint(
+            "verification_status IN ('pending', 'pending_reverification', 'approved', 'rejected', 'resubmission_required')",
+            name="chk_cleaner_verification_status",
+        ),
+        CheckConstraint(
+            "document_review_status IN ('not_submitted', 'pending_review', 'approved', 'rejected', 'resubmission_required')",
+            name="chk_cleaner_document_review_status",
+        ),
         Index("idx_cleaner_status", "approval_status", "availability_status"),
         Index("idx_cleaner_auto_assign", "approval_status", "availability_status", "auto_assign_enabled"),
+        Index("idx_cleaner_verification_status", "verification_status", "document_review_status"),
         Index(
             "idx_cleaner_aadhaar_hash",
             "aadhaar_number_hash",
@@ -58,5 +84,17 @@ class CleanerProfile(Base):
             "driving_license_number_hash",
             unique=True,
             postgresql_where=(driving_license_number_hash.isnot(None)),
+        ),
+        Index(
+            "idx_cleaner_pending_aadhaar_hash",
+            "pending_aadhaar_number_hash",
+            unique=True,
+            postgresql_where=(pending_aadhaar_number_hash.isnot(None)),
+        ),
+        Index(
+            "idx_cleaner_pending_driving_license_hash",
+            "pending_driving_license_number_hash",
+            unique=True,
+            postgresql_where=(pending_driving_license_number_hash.isnot(None)),
         ),
     )

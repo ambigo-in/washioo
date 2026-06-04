@@ -23,7 +23,13 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
-    cleaner_profile = relationship("CleanerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    cleaner_profile = relationship(
+        "CleanerProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        foreign_keys="CleanerProfile.user_id",
+    )
 
     __table_args__ = (
         Index("idx_users_phone", "phone"),

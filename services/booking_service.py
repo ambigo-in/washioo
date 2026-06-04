@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import uuid
+from models.cleaner_profile import CleanerProfile
 from repositories.booking_repository import (
     create_booking, get_booking_by_id, get_customer_bookings, get_all_bookings,
     get_customer_booking_by_id, update_booking, get_bookings_by_status,
@@ -31,6 +32,8 @@ from repositories.customer_vehicle_repository import (
     update_vehicle,
 )
 from core.security import hash_identifier, mask_identifier
+from core.config import settings
+from services.storage_service import create_signed_cleaner_image_url
 from services.auto_assignment_service import auto_assign_booking
 from services.notification_service import (
     notify_cleaner_booking_assigned,
@@ -40,6 +43,9 @@ from services.notification_service import (
     notify_customer_service_started,
     notify_admin_booking_assignment_accepted,
     notify_admin_booking_assignment_rejected,
+    notify_cleaner_document_resubmission_requested,
+    notify_cleaner_verification_approved,
+    notify_cleaner_verification_rejected,
 )
 from services.realtime_service import emit_role_event, emit_user_event
 from utils.datetime_utils import utc_isoformat
@@ -373,6 +379,213 @@ def get_or_create_cleaner_profile_service(db, user_id):
         return profile
     raise Exception("Cleaner profile not found")
 
+def _identifier_hash_exists(db, hash_value, cleaner_id, hash_column):
+    if not hash_value:
+        return False
+    return (
+        db.query(hash_column)
+        .filter(hash_column == hash_value, CleanerProfile.id != cleaner_id)
+        .first()
+        is not None
+    )
+
+def _ensure_unique_aadhaar_hash(db, cleaner_id, aadhaar_hash):
+    if _identifier_hash_exists(db, aadhaar_hash, cleaner_id, CleanerProfile.aadhaar_number_hash):
+        raise Exception("Aadhaar number is already registered")
+    if _identifier_hash_exists(db, aadhaar_hash, cleaner_id, CleanerProfile.pending_aadhaar_number_hash):
+        raise Exception("Aadhaar number is already pending review for another cleaner")
+
+def _ensure_unique_license_hash(db, cleaner_id, license_hash):
+    if not license_hash:
+        return
+    if _identifier_hash_exists(db, license_hash, cleaner_id, CleanerProfile.driving_license_number_hash):
+        raise Exception("Driving license number is already registered")
+    if _identifier_hash_exists(db, license_hash, cleaner_id, CleanerProfile.pending_driving_license_number_hash):
+        raise Exception("Driving license number is already pending review for another cleaner")
+
+def _cleaner_required_documents_present(cleaner):
+    has_required = bool(
+        (cleaner.profile_photo_url or (cleaner.user and cleaner.user.profile_image_url))
+        and cleaner.aadhaar_number
+        and cleaner.aadhaar_image_url
+    )
+    if settings.DRIVING_LICENSE_REQUIRED:
+        has_required = has_required and bool(cleaner.driving_license_number and cleaner.driving_license_image_url)
+    return has_required
+
+def _mark_documents_submitted(cleaner):
+    cleaner.document_review_status = "pending_review"
+    cleaner.verification_status = "pending"
+    cleaner.document_resubmission_required = False
+    cleaner.documents_submitted_at = datetime.utcnow()
+    cleaner.documents_verified_at = None
+    cleaner.documents_reviewed_by = None
+    cleaner.document_rejection_reason = None
+    cleaner.approval_status = "pending"
+
+def update_cleaner_profile_photo_service(db, user_id, image_url):
+    cleaner = get_or_create_cleaner_profile_service(db, user_id)
+    cleaner.profile_photo_url = image_url
+    if cleaner.user:
+        cleaner.user.profile_image_url = image_url
+    if cleaner.aadhaar_number and cleaner.aadhaar_image_url and cleaner.document_review_status in (None, "not_submitted", "rejected", "resubmission_required"):
+        _mark_documents_submitted(cleaner)
+    cleaner.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cleaner)
+    return cleaner
+
+def submit_cleaner_aadhaar_document_service(db, user_id, image_url, aadhaar_number=None):
+    cleaner = get_or_create_cleaner_profile_service(db, user_id)
+    next_aadhaar = aadhaar_number or cleaner.aadhaar_number
+    if not next_aadhaar:
+        raise Exception("Aadhaar number is required")
+    aadhaar_hash = hash_identifier(next_aadhaar)
+    _ensure_unique_aadhaar_hash(db, cleaner.id, aadhaar_hash)
+
+    replacing_existing = bool(cleaner.aadhaar_image_url and cleaner.aadhaar_number)
+    can_replace_current = (
+        not replacing_existing
+        or cleaner.document_resubmission_required
+        or cleaner.verification_status in {"rejected", "resubmission_required"}
+    )
+    if can_replace_current:
+        cleaner.aadhaar_number = next_aadhaar
+        cleaner.aadhaar_number_hash = aadhaar_hash
+        cleaner.government_id_number = next_aadhaar
+        cleaner.aadhaar_image_url = image_url
+        cleaner.pending_aadhaar_number = None
+        cleaner.pending_aadhaar_number_hash = None
+        cleaner.pending_aadhaar_image_url = None
+        _mark_documents_submitted(cleaner)
+    else:
+        cleaner.pending_aadhaar_number = next_aadhaar
+        cleaner.pending_aadhaar_number_hash = aadhaar_hash
+        cleaner.pending_aadhaar_image_url = image_url
+        cleaner.verification_status = "pending_reverification"
+        cleaner.document_review_status = "pending_review"
+        cleaner.documents_submitted_at = datetime.utcnow()
+
+    cleaner.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cleaner)
+    return cleaner
+
+def submit_cleaner_driving_license_document_service(db, user_id, image_url, driving_license_number=None):
+    cleaner = get_or_create_cleaner_profile_service(db, user_id)
+    next_license = driving_license_number or cleaner.driving_license_number
+    if not next_license:
+        raise Exception("Driving license number is required when uploading a license image")
+    license_hash = hash_identifier(next_license)
+    _ensure_unique_license_hash(db, cleaner.id, license_hash)
+
+    replacing_existing = bool(cleaner.driving_license_image_url and cleaner.driving_license_number)
+    can_replace_current = (
+        not replacing_existing
+        or cleaner.document_resubmission_required
+        or cleaner.verification_status in {"rejected", "resubmission_required"}
+    )
+    if can_replace_current:
+        cleaner.driving_license_number = next_license
+        cleaner.driving_license_number_hash = license_hash
+        cleaner.driving_license_image_url = image_url
+        cleaner.pending_driving_license_number = None
+        cleaner.pending_driving_license_number_hash = None
+        cleaner.pending_driving_license_image_url = None
+        _mark_documents_submitted(cleaner)
+    else:
+        cleaner.pending_driving_license_number = next_license
+        cleaner.pending_driving_license_number_hash = license_hash
+        cleaner.pending_driving_license_image_url = image_url
+        cleaner.verification_status = "pending_reverification"
+        cleaner.document_review_status = "pending_review"
+        cleaner.documents_submitted_at = datetime.utcnow()
+
+    cleaner.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cleaner)
+    return cleaner
+
+def approve_cleaner_documents_service(db, cleaner_id, admin_id):
+    cleaner = get_cleaner_profile_service(db, cleaner_id)
+    if cleaner.pending_aadhaar_number:
+        _ensure_unique_aadhaar_hash(db, cleaner.id, cleaner.pending_aadhaar_number_hash)
+        cleaner.aadhaar_number = cleaner.pending_aadhaar_number
+        cleaner.aadhaar_number_hash = cleaner.pending_aadhaar_number_hash
+        cleaner.government_id_number = cleaner.pending_aadhaar_number
+        cleaner.aadhaar_image_url = cleaner.pending_aadhaar_image_url
+        cleaner.pending_aadhaar_number = None
+        cleaner.pending_aadhaar_number_hash = None
+        cleaner.pending_aadhaar_image_url = None
+    if cleaner.pending_driving_license_number:
+        _ensure_unique_license_hash(db, cleaner.id, cleaner.pending_driving_license_number_hash)
+        cleaner.driving_license_number = cleaner.pending_driving_license_number
+        cleaner.driving_license_number_hash = cleaner.pending_driving_license_number_hash
+        cleaner.driving_license_image_url = cleaner.pending_driving_license_image_url
+        cleaner.pending_driving_license_number = None
+        cleaner.pending_driving_license_number_hash = None
+        cleaner.pending_driving_license_image_url = None
+    if not _cleaner_required_documents_present(cleaner):
+        raise Exception("Required cleaner documents are missing")
+
+    cleaner.approval_status = "approved"
+    cleaner.verification_status = "approved"
+    cleaner.document_review_status = "approved"
+    cleaner.document_resubmission_required = False
+    cleaner.document_rejection_reason = None
+    cleaner.documents_verified_at = datetime.utcnow()
+    cleaner.documents_reviewed_by = admin_id
+    cleaner.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cleaner)
+    try:
+        notify_cleaner_verification_approved(db, cleaner)
+        emit_user_event(
+            cleaner.user_id,
+            "cleaner_verification_updated",
+            {
+                "cleaner_id": str(cleaner.id),
+                "verification_status": cleaner.verification_status,
+                "document_review_status": cleaner.document_review_status,
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to notify cleaner approval for %s: %s", cleaner_id, exc)
+    return cleaner
+
+def reject_cleaner_documents_service(db, cleaner_id, admin_id, reason=None, request_resubmission=False):
+    cleaner = get_cleaner_profile_service(db, cleaner_id)
+    if not reason:
+        raise Exception("Rejection reason is required")
+    cleaner.approval_status = "rejected"
+    cleaner.verification_status = "resubmission_required" if request_resubmission else "rejected"
+    cleaner.document_review_status = "resubmission_required" if request_resubmission else "rejected"
+    cleaner.document_resubmission_required = True
+    cleaner.document_rejection_reason = reason
+    cleaner.documents_reviewed_by = admin_id
+    cleaner.documents_verified_at = None
+    cleaner.availability_status = "offline"
+    cleaner.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cleaner)
+    try:
+        if request_resubmission:
+            notify_cleaner_document_resubmission_requested(db, cleaner, reason)
+        else:
+            notify_cleaner_verification_rejected(db, cleaner, reason)
+        emit_user_event(
+            cleaner.user_id,
+            "cleaner_verification_updated",
+            {
+                "cleaner_id": str(cleaner.id),
+                "verification_status": cleaner.verification_status,
+                "document_review_status": cleaner.document_review_status,
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to notify cleaner verification review for %s: %s", cleaner_id, exc)
+    return cleaner
+
 def list_cleaner_profiles_service(db, approval_status=None, availability_status=None, limit=50, offset=0):
     return get_all_cleaner_profiles(db, approval_status, availability_status, limit, offset)
 
@@ -388,6 +601,8 @@ def update_cleaner_profile_service(db, cleaner_id, payload):
         raise Exception("Cleaner profile not found")
 
     cleaner_data = _cleaner_identity_data(payload.model_dump(exclude_unset=True), partial=True)
+    if cleaner_data.get("approval_status") == "approved" and not _cleaner_required_documents_present(cleaner):
+        raise Exception("Required cleaner documents are missing")
     return update_cleaner_profile(db, cleaner_id, cleaner_data)
 
 def delete_cleaner_profile_service(db, cleaner_id):
@@ -498,6 +713,8 @@ def get_cleaner_assignment_service(db, user_id, assignment_id):
 
 def accept_assignment_service(db, user_id, assignment_id, payload):
     assignment = get_cleaner_assignment_service(db, user_id, assignment_id)
+    if not assignment.cleaner or assignment.cleaner.approval_status != "approved":
+        raise Exception("Cleaner must be approved before accepting bookings")
     if assignment.assignment_status in ["accepted", "in_progress", "completed"]:
         return assignment
     if assignment.assignment_status != "assigned":
@@ -891,6 +1108,19 @@ def _masked_identity(value):
 def format_cleaner_profile(cleaner, include_sensitive_identity=False):
     if not cleaner:
         return None
+    stored_profile_photo_url = cleaner.profile_photo_url or (cleaner.user.profile_image_url if cleaner.user else None)
+    profile_photo_url = create_signed_cleaner_image_url(stored_profile_photo_url)
+    aadhaar_image_url = create_signed_cleaner_image_url(
+        getattr(cleaner, "aadhaar_image_url", None)
+    )
+    driving_license_image_url = create_signed_cleaner_image_url(
+        getattr(cleaner, "driving_license_image_url", None)
+    )
+    has_profile_photo = bool(profile_photo_url)
+    has_aadhaar_number = bool(cleaner.aadhaar_number_hash or cleaner.aadhaar_number)
+    has_aadhaar_image = bool(getattr(cleaner, "aadhaar_image_url", None))
+    has_license_number = bool(cleaner.driving_license_number_hash or cleaner.driving_license_number)
+    has_license_image = bool(getattr(cleaner, "driving_license_image_url", None))
     profile = {
         "id": str(cleaner.id),
         "user_id": str(cleaner.user_id),
@@ -898,10 +1128,35 @@ def format_cleaner_profile(cleaner, include_sensitive_identity=False):
         "phone": cleaner.user.phone if cleaner.user else None,
         "email": cleaner.user.email if cleaner.user else None,
         "vehicle_type": cleaner.vehicle_type,
+        "profile_photo_url": profile_photo_url,
         "aadhaar_number_masked": _masked_identity(cleaner.aadhaar_number),
         "driving_license_number_masked": _masked_identity(cleaner.driving_license_number),
-        "has_aadhaar": bool(cleaner.aadhaar_number_hash or cleaner.aadhaar_number),
-        "has_driving_license": bool(cleaner.driving_license_number_hash or cleaner.driving_license_number),
+        "aadhaar_image_url": aadhaar_image_url,
+        "driving_license_image_url": driving_license_image_url,
+        "has_profile_photo": has_profile_photo,
+        "has_aadhaar": has_aadhaar_number,
+        "has_aadhaar_image": has_aadhaar_image,
+        "has_driving_license": has_license_number,
+        "has_driving_license_image": has_license_image,
+        "verification_status": getattr(cleaner, "verification_status", None) or "pending",
+        "document_review_status": getattr(cleaner, "document_review_status", None) or "not_submitted",
+        "document_resubmission_required": bool(getattr(cleaner, "document_resubmission_required", False)),
+        "document_rejection_reason": getattr(cleaner, "document_rejection_reason", None),
+        "documents_submitted_at": utc_isoformat(getattr(cleaner, "documents_submitted_at", None)),
+        "documents_verified_at": utc_isoformat(getattr(cleaner, "documents_verified_at", None)),
+        "driving_license_required": settings.DRIVING_LICENSE_REQUIRED,
+        "pending_document_update": bool(
+            getattr(cleaner, "pending_aadhaar_image_url", None)
+            or getattr(cleaner, "pending_driving_license_image_url", None)
+        ),
+        "verification_progress": {
+            "profile_photo": has_profile_photo,
+            "aadhaar_number": has_aadhaar_number,
+            "aadhaar_image": has_aadhaar_image,
+            "driving_license_number": has_license_number,
+            "driving_license_image": has_license_image,
+            "driving_license_required": settings.DRIVING_LICENSE_REQUIRED,
+        },
         "service_radius_km": float(cleaner.service_radius_km) if cleaner.service_radius_km is not None else None,
         "approval_status": cleaner.approval_status,
         "availability_status": cleaner.availability_status,
@@ -920,6 +1175,14 @@ def format_cleaner_profile(cleaner, include_sensitive_identity=False):
         profile.update({
             "aadhaar_number": cleaner.aadhaar_number,
             "driving_license_number": cleaner.driving_license_number,
+            "pending_aadhaar_number": getattr(cleaner, "pending_aadhaar_number", None),
+            "pending_aadhaar_image_url": create_signed_cleaner_image_url(
+                getattr(cleaner, "pending_aadhaar_image_url", None)
+            ),
+            "pending_driving_license_number": getattr(cleaner, "pending_driving_license_number", None),
+            "pending_driving_license_image_url": create_signed_cleaner_image_url(
+                getattr(cleaner, "pending_driving_license_image_url", None)
+            ),
             "identity_data_status": (
                 "masked_legacy_data"
                 if _identity_is_masked(cleaner.aadhaar_number) or _identity_is_masked(cleaner.driving_license_number)
@@ -944,6 +1207,20 @@ def _cleaner_identity_data(cleaner_data, partial=False):
 def format_assignment_summary(assignment):
     if not assignment:
         return None
+    cleaner_details = None
+    if assignment.cleaner:
+        cleaner_details = {
+            "id": str(assignment.cleaner.id),
+            "name": assignment.cleaner.user.full_name if assignment.cleaner.user else None,
+            "profile_photo_url": assignment.cleaner.profile_photo_url or (
+                assignment.cleaner.user.profile_image_url
+                if assignment.cleaner.user
+                else None
+            ),
+            "rating": float(assignment.cleaner.average_rating or assignment.cleaner.rating or 0),
+            "experience": assignment.cleaner.total_jobs_completed or 0,
+            "verification_badge": assignment.cleaner.verification_status == "approved",
+        }
     return {
         "id": str(assignment.id),
         "cleaner_id": str(assignment.cleaner_id),
@@ -952,6 +1229,7 @@ def format_assignment_summary(assignment):
             if assignment.cleaner and assignment.cleaner.user
             else None
         ),
+        "cleaner_details": cleaner_details,
         "assignment_status": assignment.assignment_status,
         "assigned_at": utc_isoformat(assignment.assigned_at),
         "accepted_at": utc_isoformat(assignment.accepted_at),

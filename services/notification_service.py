@@ -225,6 +225,51 @@ def notify_admin_booking_assignment_rejected(db, assignment):
     )
 
 
+def notify_cleaner_verification_approved(db, cleaner):
+    if not cleaner or not cleaner.user_id:
+        return None
+    return notify_user_booking_status_change(
+        db,
+        cleaner.user_id,
+        "Profile approved",
+        "Your cleaner profile has been approved. You can now accept bookings.",
+        "cleaner_verification_approved",
+        url="/cleaner/profile",
+    )
+
+
+def notify_cleaner_verification_rejected(db, cleaner, reason=None):
+    if not cleaner or not cleaner.user_id:
+        return None
+    message = "Your cleaner profile verification was rejected."
+    if reason:
+        message = f"{message} Reason: {reason}"
+    return notify_user_booking_status_change(
+        db,
+        cleaner.user_id,
+        "Profile verification rejected",
+        message,
+        "cleaner_verification_rejected",
+        url="/cleaner/profile",
+    )
+
+
+def notify_cleaner_document_resubmission_requested(db, cleaner, reason=None):
+    if not cleaner or not cleaner.user_id:
+        return None
+    message = "Please resubmit your cleaner verification documents."
+    if reason:
+        message = f"{message} Reason: {reason}"
+    return notify_user_booking_status_change(
+        db,
+        cleaner.user_id,
+        "Document resubmission requested",
+        message,
+        "cleaner_document_resubmission_requested",
+        url="/cleaner/profile",
+    )
+
+
 def send_web_push_to_user(db, user_id, title, body, data=None):
     if not settings.WEB_PUSH_ENABLED:
         logger.info("Web Push disabled; stored notification only for user %s", user_id)

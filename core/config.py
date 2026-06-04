@@ -49,6 +49,12 @@ class Settings:
     WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY")
     WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:support@washioo.local")
 
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "cleaner-documents")
+    MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", 5 * 1024 * 1024))
+    DRIVING_LICENSE_REQUIRED = os.getenv("DRIVING_LICENSE_REQUIRED", "False").lower() == "true"
+
     def validate(self):
         missing = [
             name for name in ["DATABASE_URL", "SECRET_KEY"]

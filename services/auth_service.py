@@ -58,6 +58,14 @@ def _verify_signup_otp(db, payload):
         raise Exception("Invalid OTP")
 
 
+def _apply_terms_acceptance(user, accepted: bool):
+    if not accepted:
+        return
+    user.terms_accepted = True
+    if user.terms_accepted_at is None:
+        user.terms_accepted_at = datetime.utcnow()
+
+
 def _get_user_by_signup_email(db, email):
     if not email:
         return None
@@ -73,6 +81,8 @@ def _cleaner_profile_data_from_signup(payload):
         "aadhaar_number_hash": hash_identifier(payload.aadhaar_number),
         "government_id_number": payload.aadhaar_number,
     }
+    if settings.DRIVING_LICENSE_REQUIRED and not payload.driving_license_number:
+        raise Exception("Driving license number is required for cleaner signup")
     if payload.driving_license_number is not None:
         data["driving_license_number"] = payload.driving_license_number
         data["driving_license_number_hash"] = hash_identifier(payload.driving_license_number)
@@ -116,6 +126,9 @@ def signup_user_for_role(db, payload, role_name: str, cleaner_profile_data: dict
         # Assign role
         assign_role_to_user(db, user.id, role.id)
 
+    _apply_terms_acceptance(user, getattr(payload, "terms_accepted", False))
+    db.commit()
+
     if role_name == "cleaner" and not get_cleaner_profile_by_user_id(db, user.id):
         if cleaner_profile_data is None:
             cleaner_profile_data = _cleaner_profile_data_from_signup(payload)
@@ -135,6 +148,9 @@ def signin_user_for_role(db, payload, role_name: str):
 
     if not verify_otp_code(db, payload.phone_number, payload.otp_code):
         raise Exception("Invalid OTP")
+
+    _apply_terms_acceptance(user, getattr(payload, "terms_accepted", False))
+    db.commit()
 
     return _create_tokens(db, user, role_name)
 

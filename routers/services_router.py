@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 from schemas.booking_schema import (
     AdminUpdateBookingRequest,
@@ -17,6 +17,9 @@ from schemas.booking_schema import (
     UpdateCleanerProfileRequest,
     UpdateServiceRequest,
     VerifyCleanerIdentityRequest,
+    AdminCleanerReviewRequest,
+    CleanerAadhaarUploadRequest,
+    CleanerDrivingLicenseUploadRequest,
 )
 from core.database import get_db
 from core.role_dependencies import require_roles
@@ -42,7 +45,13 @@ from services.booking_service import (
     complete_assignment_service, format_cleaner_profile, format_assignment,
     format_cleaner_assignment,
     format_assignment_summary,
+    approve_cleaner_documents_service,
+    reject_cleaner_documents_service,
+    submit_cleaner_aadhaar_document_service,
+    submit_cleaner_driving_license_document_service,
+    update_cleaner_profile_photo_service,
 )
+from services.storage_service import upload_cleaner_image
 from utils.datetime_utils import utc_isoformat
 
 
@@ -596,7 +605,72 @@ def update_cleaner_admin(
             "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/admin/cleaners/{cleaner_id}/approve", tags=[ADMIN_TAG])
+def approve_cleaner_documents_admin(
+    cleaner_id: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin approves submitted cleaner documents and work eligibility."""
+    try:
+        cleaner = approve_cleaner_documents_service(db, cleaner_id, current_admin.id)
+        return {
+            "message": "Cleaner approved successfully",
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/admin/cleaners/{cleaner_id}/reject", tags=[ADMIN_TAG])
+def reject_cleaner_documents_admin(
+    cleaner_id: str,
+    payload: AdminCleanerReviewRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin rejects cleaner documents with a cleaner-visible reason."""
+    try:
+        cleaner = reject_cleaner_documents_service(
+            db,
+            cleaner_id,
+            current_admin.id,
+            payload.reason,
+            request_resubmission=False,
+        )
+        return {
+            "message": "Cleaner verification rejected",
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/admin/cleaners/{cleaner_id}/request-resubmission", tags=[ADMIN_TAG])
+def request_cleaner_document_resubmission_admin(
+    cleaner_id: str,
+    payload: AdminCleanerReviewRequest,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin asks a cleaner to resubmit corrected documents."""
+    try:
+        cleaner = reject_cleaner_documents_service(
+            db,
+            cleaner_id,
+            current_admin.id,
+            payload.reason,
+            request_resubmission=True,
+        )
+        return {
+            "message": "Cleaner document resubmission requested",
+            "cleaner": format_cleaner_profile(cleaner, include_sensitive_identity=True)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("/admin/cleaners/{cleaner_id}", tags=[ADMIN_TAG])
@@ -629,7 +703,78 @@ def get_current_cleaner_profile(
             "cleaner": format_cleaner_profile(cleaner)
         }
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Request could not be processed")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/profile/photo", tags=[CLEANER_TAG])
+async def upload_current_cleaner_profile_photo(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner uploads or updates profile photo."""
+    try:
+        cleaner = get_or_create_cleaner_profile_service(db, current_cleaner.id)
+        image_url = await upload_cleaner_image(file, cleaner.id, "profile-photo")
+        cleaner = update_cleaner_profile_photo_service(db, current_cleaner.id, image_url)
+        return {
+            "message": "Profile photo uploaded successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/profile/aadhaar", tags=[CLEANER_TAG])
+async def upload_current_cleaner_aadhaar(
+    aadhaar_number: str | None = Form(default=None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner uploads Aadhaar image. Existing approved documents go to pending re-verification."""
+    try:
+        payload = CleanerAadhaarUploadRequest(aadhaar_number=aadhaar_number)
+        cleaner = get_or_create_cleaner_profile_service(db, current_cleaner.id)
+        image_url = await upload_cleaner_image(file, cleaner.id, "aadhaar")
+        cleaner = submit_cleaner_aadhaar_document_service(
+            db,
+            current_cleaner.id,
+            image_url,
+            payload.aadhaar_number,
+        )
+        return {
+            "message": "Aadhaar document uploaded successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cleaner/profile/driving-license", tags=[CLEANER_TAG])
+async def upload_current_cleaner_driving_license(
+    driving_license_number: str | None = Form(default=None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_cleaner=Depends(require_roles(["cleaner"]))
+):
+    """Cleaner uploads optional driving license document."""
+    try:
+        payload = CleanerDrivingLicenseUploadRequest(driving_license_number=driving_license_number)
+        cleaner = get_or_create_cleaner_profile_service(db, current_cleaner.id)
+        image_url = await upload_cleaner_image(file, cleaner.id, "driving-license")
+        cleaner = submit_cleaner_driving_license_document_service(
+            db,
+            current_cleaner.id,
+            image_url,
+            payload.driving_license_number,
+        )
+        return {
+            "message": "Driving license document uploaded successfully",
+            "cleaner": format_cleaner_profile(cleaner)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/cleaner/profile/verify-identity", tags=[CLEANER_TAG])

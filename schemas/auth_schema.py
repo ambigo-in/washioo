@@ -24,6 +24,7 @@ class SendOTPRequest(BaseModel):
 class SigninRequest(BaseModel):
     phone_number: str
     otp_code: str
+    terms_accepted: bool = False
 
     @field_validator("phone_number")
     @classmethod
@@ -41,6 +42,7 @@ class RoleSignupRequest(BaseModel):
     phone_number: str
     email: EmailStr | None = None
     otp_code: str
+    terms_accepted: bool = False
 
     @field_validator("phone_number")
     @classmethod

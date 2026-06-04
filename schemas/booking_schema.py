@@ -189,6 +189,24 @@ class UpdateCleanerLocationRequest(BaseModel):
 class VerifyCleanerIdentityRequest(BaseModel):
     phone_last_four: str = Field(..., pattern=r"^\d{4}$")
 
+class CleanerAadhaarUploadRequest(BaseModel):
+    aadhaar_number: Optional[str] = Field(default=None, pattern=r"^\d{12}$")
+
+class CleanerDrivingLicenseUploadRequest(BaseModel):
+    driving_license_number: Optional[str] = Field(default=None, pattern=r"^[A-Za-z0-9]{15,16}$")
+
+    @field_validator("driving_license_number", mode="before")
+    @classmethod
+    def normalize_optional_driving_license(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value.strip().upper().replace(" ", "")
+
+class AdminCleanerReviewRequest(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500)
+
 class AssignBookingRequest(BaseModel):
     cleaner_id: str
     cleaner_notes: Optional[str] = None
