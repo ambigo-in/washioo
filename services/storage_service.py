@@ -1,4 +1,6 @@
 import posixpath
+import threading
+import time
 import uuid
 from urllib.parse import unquote, urlparse
 
@@ -14,6 +16,9 @@ ALLOWED_IMAGE_CONTENT_TYPES = {
     "image/png",
     "image/webp",
 }
+
+_SIGNED_IMAGE_URL_CACHE: dict[tuple[str, int], tuple[str, float]] = {}
+_SIGNED_IMAGE_URL_CACHE_LOCK = threading.Lock()
 
 
 def _supabase_error_message(response: httpx.Response) -> str:
@@ -134,9 +139,44 @@ def _absolute_supabase_storage_url(supabase_url: str, signed_url: str) -> str:
     return f"{supabase_url}/{signed_url.lstrip('/')}"
 
 
+def _get_cached_signed_image_url(file_url: str, expires_in: int) -> str | None:
+    object_path = _object_path_from_storage_url(file_url)
+    if not object_path:
+        return None
+
+    cache_key = (object_path, expires_in)
+    current_time = time.time()
+
+    with _SIGNED_IMAGE_URL_CACHE_LOCK:
+        cached_value = _SIGNED_IMAGE_URL_CACHE.get(cache_key)
+        if cached_value is not None:
+            signed_url, expires_at = cached_value
+            if expires_at > current_time:
+                return signed_url
+            _SIGNED_IMAGE_URL_CACHE.pop(cache_key, None)
+
+    return None
+
+
+def _store_signed_image_url_cache(file_url: str, signed_url: str, expires_in: int) -> None:
+    object_path = _object_path_from_storage_url(file_url)
+    if not object_path:
+        return
+
+    cache_key = (object_path, expires_in)
+    expires_at = time.time() + max(expires_in, 1)
+
+    with _SIGNED_IMAGE_URL_CACHE_LOCK:
+        _SIGNED_IMAGE_URL_CACHE[cache_key] = (signed_url, expires_at)
+
+
 def create_signed_cleaner_image_url(file_url: str | None, expires_in: int = 3600) -> str | None:
     if not file_url:
         return None
+
+    cached_signed_url = _get_cached_signed_image_url(file_url, expires_in)
+    if cached_signed_url:
+        return cached_signed_url
 
     object_path = _object_path_from_storage_url(file_url)
     if not object_path:
@@ -173,4 +213,7 @@ def create_signed_cleaner_image_url(file_url: str | None, expires_in: int = 3600
     signed_url = payload.get("signedURL") or payload.get("signedUrl")
     if not signed_url:
         return file_url
-    return _absolute_supabase_storage_url(supabase_url, str(signed_url))
+
+    absolute_signed_url = _absolute_supabase_storage_url(supabase_url, str(signed_url))
+    _store_signed_image_url_cache(file_url, absolute_signed_url, expires_in)
+    return absolute_signed_url
