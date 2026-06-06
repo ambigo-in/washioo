@@ -74,6 +74,7 @@ class CreateServiceRequest(BaseModel):
     allow_extra_payment: Optional[bool] = False
     max_extra_amount: Optional[Decimal] = Field(default=None, ge=0)
     extra_payment_instructions: Optional[str] = None
+    image_url: Optional[str] = None
     is_active: Optional[bool] = True
 
 class UpdateServiceRequest(BaseModel):
@@ -84,6 +85,7 @@ class UpdateServiceRequest(BaseModel):
     allow_extra_payment: Optional[bool] = None
     max_extra_amount: Optional[Decimal] = Field(default=None, ge=0)
     extra_payment_instructions: Optional[str] = None
+    image_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 class CreateCustomerVehicleRequest(BaseModel):
@@ -109,6 +111,7 @@ class ServiceCategorySchema(BaseModel):
     allow_extra_payment: bool = False
     max_extra_amount: Optional[Decimal] = None
     extra_payment_instructions: Optional[str] = None
+    image_url: Optional[str] = None
     is_active: bool
 
     class Config:

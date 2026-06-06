@@ -51,7 +51,12 @@ from services.booking_service import (
     submit_cleaner_driving_license_document_service,
     update_cleaner_profile_photo_service,
 )
-from services.storage_service import upload_cleaner_image
+from services.storage_service import (
+    create_signed_image_url,
+    delete_storage_file,
+    upload_cleaner_image,
+    upload_service_image,
+)
 from utils.datetime_utils import utc_isoformat
 
 
@@ -86,6 +91,7 @@ def format_service_category(service):
             "extra_payment_instructions",
             None,
         ),
+        "image_url": create_signed_image_url(getattr(service, "image_url", None)),
         "is_active": service.is_active,
     }
 
@@ -156,6 +162,35 @@ def update_service_category_admin(
     }
 
 
+@router.post("/admin/service-categories/{service_id}/image", tags=[ADMIN_TAG])
+async def upload_service_category_image_admin(
+    service_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"]))
+):
+    """Admin uploads or replaces a service category image."""
+    service = get_service_by_id(db, service_id)
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    previous_image_url = getattr(service, "image_url", None)
+    try:
+        image_url = await upload_service_image(file, service.id)
+        service = update_service(db, service_id, {"image_url": image_url})
+        if previous_image_url and previous_image_url != image_url:
+            try:
+                delete_storage_file(previous_image_url)
+            except Exception:
+                pass
+        return {
+            "message": "Service image uploaded successfully",
+            "service": format_service_category(service)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/admin/service-categories/{service_id}", tags=[ADMIN_TAG])
 def delete_service_category_admin(
     service_id: str,
@@ -163,9 +198,17 @@ def delete_service_category_admin(
     current_admin=Depends(require_roles(["admin"]))
 ):
     """Admin soft delete service category"""
+    existing_service = get_service_by_id(db, service_id)
+    image_url = getattr(existing_service, "image_url", None) if existing_service else None
     service = delete_service(db, service_id)
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
+    if image_url:
+        try:
+            delete_storage_file(image_url)
+            update_service(db, service_id, {"image_url": None})
+        except Exception:
+            pass
 
     return {
         "message": "Service deactivated successfully",

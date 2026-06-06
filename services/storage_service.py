@@ -77,14 +77,28 @@ async def validate_image_upload(file: UploadFile) -> tuple[bytes, str]:
 
 async def upload_cleaner_image(file: UploadFile, cleaner_id, document_type: str) -> str:
     content, extension = await validate_image_upload(file)
-    supabase_url = _clean_supabase_url()
-    bucket = settings.SUPABASE_STORAGE_BUCKET
     object_path = posixpath.join(
         "cleaners",
         str(cleaner_id),
         document_type,
         f"{uuid.uuid4()}.{extension}",
     )
+    return await _upload_image_content(file, content, object_path)
+
+
+async def upload_service_image(file: UploadFile, service_id) -> str:
+    content, extension = await validate_image_upload(file)
+    object_path = posixpath.join(
+        "services",
+        str(service_id),
+        f"{uuid.uuid4()}.{extension}",
+    )
+    return await _upload_image_content(file, content, object_path)
+
+
+async def _upload_image_content(file: UploadFile, content: bytes, object_path: str) -> str:
+    supabase_url = _clean_supabase_url()
+    bucket = settings.SUPABASE_STORAGE_BUCKET
     upload_url = f"{supabase_url}/storage/v1/object/{bucket}/{object_path}"
     headers = {
         "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
@@ -103,6 +117,45 @@ async def upload_cleaner_image(file: UploadFile, cleaner_id, document_type: str)
         )
 
     return f"{supabase_url}/storage/v1/object/public/{bucket}/{object_path}"
+
+
+def delete_storage_file(file_url: str | None) -> bool:
+    object_path = _object_path_from_storage_url(file_url or "")
+    if not object_path:
+        return False
+
+    supabase_url = _clean_supabase_url()
+    bucket = settings.SUPABASE_STORAGE_BUCKET
+    delete_url = f"{supabase_url}/storage/v1/object/{bucket}"
+    headers = {
+        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+        "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+        "Content-Type": "application/json",
+    }
+
+    with httpx.Client(timeout=30) as client:
+        response = client.request(
+            "DELETE",
+            delete_url,
+            headers=headers,
+            json={"prefixes": [object_path]},
+        )
+
+    if response.status_code not in {200, 204}:
+        raise Exception(
+            f"Unable to delete image from Supabase Storage: "
+            f"{response.status_code} {_supabase_error_message(response)}"
+        )
+
+    with _SIGNED_IMAGE_URL_CACHE_LOCK:
+        keys_to_delete = [
+            key for key in _SIGNED_IMAGE_URL_CACHE
+            if key[0] == object_path
+        ]
+        for key in keys_to_delete:
+            _SIGNED_IMAGE_URL_CACHE.pop(key, None)
+
+    return True
 
 
 def _object_path_from_storage_url(file_url: str) -> str | None:
@@ -164,13 +217,13 @@ def _store_signed_image_url_cache(file_url: str, signed_url: str, expires_in: in
         return
 
     cache_key = (object_path, expires_in)
-    expires_at = time.time() + max(expires_in, 1)
+    expires_at = time.time() + max(expires_in - 60, 1)
 
     with _SIGNED_IMAGE_URL_CACHE_LOCK:
         _SIGNED_IMAGE_URL_CACHE[cache_key] = (signed_url, expires_at)
 
 
-def create_signed_cleaner_image_url(file_url: str | None, expires_in: int = 3600) -> str | None:
+def create_signed_image_url(file_url: str | None, expires_in: int = 3600) -> str | None:
     if not file_url:
         return None
 
@@ -217,3 +270,7 @@ def create_signed_cleaner_image_url(file_url: str | None, expires_in: int = 3600
     absolute_signed_url = _absolute_supabase_storage_url(supabase_url, str(signed_url))
     _store_signed_image_url_cache(file_url, absolute_signed_url, expires_in)
     return absolute_signed_url
+
+
+def create_signed_cleaner_image_url(file_url: str | None, expires_in: int = 3600) -> str | None:
+    return create_signed_image_url(file_url, expires_in)

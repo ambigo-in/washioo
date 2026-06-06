@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS service_categories (
     description TEXT,
     base_price NUMERIC(10,2) NOT NULL,
     estimated_duration_minutes INTEGER,
+    image_url VARCHAR,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
