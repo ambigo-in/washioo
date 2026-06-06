@@ -1,8 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.role_dependencies import require_roles
+from services.admin_export_service import (
+    EXPORT_DATASETS,
+    build_admin_export_workbook,
+    export_filename,
+)
 from services.notification_service import (
     format_notification,
     list_user_notifications_service,
@@ -30,6 +36,30 @@ def _cleanup_response(db, target, deleted_count):
         "target": target,
         "deleted_count": deleted_count,
     }
+
+
+@router.get("/exports/{dataset}")
+def download_admin_export(
+    dataset: str,
+    db: Session = Depends(get_db),
+    current_admin=Depends(require_roles(["admin"])),
+):
+    normalized_dataset = dataset.strip().lower()
+    if normalized_dataset not in EXPORT_DATASETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported export dataset. Use one of: {', '.join(sorted(EXPORT_DATASETS))}",
+        )
+
+    workbook = build_admin_export_workbook(db, normalized_dataset)
+    filename = export_filename(normalized_dataset)
+    return StreamingResponse(
+        workbook,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @router.get("/notifications")
