@@ -16,7 +16,7 @@ Required environment variables:
 - `MAX_UPLOAD_SIZE_BYTES`
 - `DRIVING_LICENSE_REQUIRED`
 
-Allowed upload formats are `jpg`, `jpeg`, `png`, and `webp`. The default maximum size is 5 MB.
+Allowed upload formats are `jpg`, `jpeg`, `png`, and `webp`. The default maximum size is 3 MB.
 
 ## Cleaner Workflow
 

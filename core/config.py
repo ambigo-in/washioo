@@ -52,7 +52,7 @@ class Settings:
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "cleaner-documents")
-    MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", 5 * 1024 * 1024))
+    MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", 3 * 1024 * 1024))
     DRIVING_LICENSE_REQUIRED = os.getenv("DRIVING_LICENSE_REQUIRED", "False").lower() == "true"
 
     def validate(self):

@@ -16,6 +16,7 @@ ALLOWED_IMAGE_CONTENT_TYPES = {
     "image/png",
     "image/webp",
 }
+BYTES_PER_MB = 1024 * 1024
 
 _SIGNED_IMAGE_URL_CACHE: dict[tuple[str, int], tuple[str, float]] = {}
 _SIGNED_IMAGE_URL_CACHE_LOCK = threading.Lock()
@@ -71,7 +72,8 @@ async def validate_image_upload(file: UploadFile) -> tuple[bytes, str]:
     if not content:
         raise Exception("Image file is required")
     if len(content) > settings.MAX_UPLOAD_SIZE_BYTES:
-        raise Exception("Image file must be 5 MB or smaller")
+        max_size_mb = max(settings.MAX_UPLOAD_SIZE_BYTES / BYTES_PER_MB, 0)
+        raise Exception(f"Image file must be {max_size_mb:g} MB or smaller")
     return content, extension
 
 
