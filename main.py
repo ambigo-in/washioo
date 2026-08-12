@@ -96,15 +96,8 @@ API_PREFIX = "/washioo-api"
 
 
 def _is_public_cacheable_api_request(request: Request) -> bool:
-    path = request.url.path.rstrip("/")
-    return (
-        request.method == "GET"
-        and not request.headers.get("authorization")
-        and (
-            path == f"{API_PREFIX}/services"
-            or path.startswith(f"{API_PREFIX}/services/service-categories/")
-        )
-    )
+    # Service endpoints must always return fresh data for frontend admin and public screens.
+    return False
 
 app = FastAPI(
     title="Car Wash Service Portal API",
