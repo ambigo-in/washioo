@@ -1060,6 +1060,17 @@ def format_customer_booking(booking):
         "id": str(booking.id),
         "booking_reference": booking.booking_reference,
         "service_name": booking.service_category.service_name if booking.service_category else None,
+        "service_category_id": str(booking.service_category_id) if getattr(booking, "service_category_id", None) else None,
+        "service": {
+            "id": str(booking.service_category.id) if getattr(booking, "service_category", None) else None,
+            "service_name": booking.service_category.service_name if getattr(booking, "service_category", None) else None,
+            "base_price": float(booking.service_category.base_price) if getattr(booking, "service_category", None) and getattr(booking.service_category, "base_price", None) is not None else None,
+            "allow_extra_payment": bool(getattr(booking.service_category, "allow_extra_payment", False)),
+            "max_extra_amount": (float(booking.service_category.max_extra_amount)
+                if getattr(booking.service_category, "max_extra_amount", None) is not None
+                else None),
+            "extra_payment_instructions": getattr(booking.service_category, "extra_payment_instructions", None),
+        },
         "scheduled_date": str(booking.scheduled_date),
         "scheduled_time": str(booking.scheduled_time),
         "booking_status": booking.booking_status,
