@@ -1,0 +1,1829 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Washioo Application Manual</title>
+    <meta
+      name="description"
+      content="A role-wise manual for customers, cleaners, administrators, and client teams using the Washioo vehicle wash platform."
+    />
+    <style>
+      :root {
+        --teal: #11aab1;
+        --teal-dark: #08656b;
+        --teal-soft: #eafbfc;
+        --ink: #123133;
+        --muted: #557174;
+        --line: #d8ecee;
+        --surface: #ffffff;
+        --surface-strong: #f5fbfb;
+        --warning: #b45309;
+        --warning-soft: #fff7ed;
+        --danger: #b91c1c;
+        --danger-soft: #fef2f2;
+        --success: #13795b;
+        --success-soft: #e9fbf3;
+        --shadow: 0 18px 45px rgba(18, 49, 51, 0.12);
+        --radius: 8px;
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 18% 4%, rgba(17, 170, 177, 0.18), transparent 30%),
+          linear-gradient(135deg, #f6fcfc 0%, #ffffff 44%, #eafbfc 100%);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.55;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .skip-link {
+        left: 16px;
+        position: absolute;
+        top: -48px;
+        z-index: 20;
+        background: var(--ink);
+        color: white;
+        padding: 10px 14px;
+        border-radius: var(--radius);
+      }
+
+      .skip-link:focus {
+        top: 16px;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(18px);
+        background: rgba(255, 255, 255, 0.86);
+        border-bottom: 1px solid rgba(216, 236, 238, 0.9);
+      }
+
+      .topbar-inner {
+        align-items: center;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 12px 20px;
+      }
+
+      .brand {
+        align-items: center;
+        display: inline-flex;
+        gap: 10px;
+        min-width: max-content;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+        border-radius: 8px;
+        color: white;
+        display: inline-flex;
+        font-weight: 900;
+        height: 38px;
+        justify-content: center;
+        letter-spacing: 0;
+        width: 38px;
+      }
+
+      .brand-name {
+        display: grid;
+        gap: 0;
+      }
+
+      .brand-name strong {
+        font-size: 1.05rem;
+        letter-spacing: 0;
+      }
+
+      .brand-name span {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .nav-links {
+        align-items: center;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .nav-links::-webkit-scrollbar {
+        display: none;
+      }
+
+      .nav-links a {
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 800;
+        padding: 9px 12px;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .nav-links a:hover,
+      .nav-links a:focus-visible {
+        background: var(--teal-soft);
+        color: var(--teal-dark);
+        outline: none;
+      }
+
+      .page {
+        margin: 0 auto;
+        max-width: 1180px;
+        padding: 0 20px 72px;
+      }
+
+      .hero {
+        align-items: stretch;
+        display: grid;
+        gap: 30px;
+        grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+        min-height: 620px;
+        padding: 56px 0 34px;
+      }
+
+      .hero-copy {
+        align-self: center;
+        max-width: 710px;
+      }
+
+      .eyebrow {
+        align-items: center;
+        color: var(--teal-dark);
+        display: inline-flex;
+        font-size: 0.84rem;
+        font-weight: 900;
+        gap: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        background: var(--teal);
+        border-radius: 999px;
+        content: "";
+        height: 10px;
+        width: 10px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        letter-spacing: 0;
+        line-height: 1.08;
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(2.45rem, 5vw, 5rem);
+        margin-top: 18px;
+      }
+
+      .hero-copy p {
+        color: var(--muted);
+        font-size: 1.12rem;
+        margin: 20px 0 0;
+        max-width: 680px;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      .button {
+        align-items: center;
+        border: 0;
+        border-radius: var(--radius);
+        cursor: pointer;
+        display: inline-flex;
+        font-weight: 900;
+        justify-content: center;
+        min-height: 44px;
+        padding: 12px 16px;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        background: var(--teal-dark);
+        color: white;
+        box-shadow: 0 12px 26px rgba(8, 101, 107, 0.22);
+      }
+
+      .button.secondary {
+        background: white;
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }
+
+      .button:hover,
+      .button:focus-visible {
+        transform: translateY(-1px);
+        outline: 3px solid rgba(17, 170, 177, 0.2);
+      }
+
+      .quick-stats {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 34px;
+      }
+
+      .metric {
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 1.7rem;
+        line-height: 1;
+      }
+
+      .metric span {
+        color: var(--muted);
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 800;
+        margin-top: 8px;
+      }
+
+      .hero-visual {
+        align-self: center;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(234, 251, 252, 0.94));
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        min-height: 520px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .hero-visual::before {
+        background:
+          linear-gradient(90deg, rgba(17, 170, 177, 0.12) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(17, 170, 177, 0.1) 1px, transparent 1px);
+        background-size: 38px 38px;
+        content: "";
+        inset: 0;
+        opacity: 0.55;
+        position: absolute;
+      }
+
+      .phone-shell {
+        background: #102d30;
+        border-radius: 30px;
+        box-shadow: 0 28px 70px rgba(18, 49, 51, 0.28);
+        left: 50%;
+        max-width: 330px;
+        padding: 12px;
+        position: absolute;
+        top: 54%;
+        transform: translate(-50%, -50%);
+        width: min(76%, 330px);
+      }
+
+      .phone-screen {
+        background: #f8fdfd;
+        border-radius: 22px;
+        min-height: 510px;
+        overflow: hidden;
+        padding: 18px;
+      }
+
+      .screen-top {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .screen-pill {
+        background: var(--teal-soft);
+        border-radius: 999px;
+        color: var(--teal-dark);
+        font-size: 0.75rem;
+        font-weight: 900;
+        padding: 6px 10px;
+      }
+
+      .screen-title {
+        margin: 22px 0 14px;
+      }
+
+      .screen-title strong {
+        display: block;
+        font-size: 1.4rem;
+        line-height: 1.12;
+      }
+
+      .screen-title span {
+        color: var(--muted);
+        display: block;
+        font-size: 0.86rem;
+        margin-top: 7px;
+      }
+
+      .service-row,
+      .status-row {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        display: grid;
+        gap: 4px;
+        margin-top: 10px;
+        padding: 12px;
+      }
+
+      .service-row strong,
+      .status-row strong {
+        font-size: 0.95rem;
+      }
+
+      .service-row span,
+      .status-row span {
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .mock-progress {
+        display: grid;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .mock-step {
+        align-items: center;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 26px 1fr;
+      }
+
+      .mock-dot {
+        background: var(--teal);
+        border-radius: 999px;
+        height: 26px;
+        position: relative;
+        width: 26px;
+      }
+
+      .mock-dot.pending {
+        background: #c8d9db;
+      }
+
+      .mock-step span {
+        color: var(--ink);
+        font-size: 0.84rem;
+        font-weight: 800;
+      }
+
+      .section {
+        padding: 42px 0;
+        scroll-margin-top: 92px;
+      }
+
+      .section-heading {
+        align-items: end;
+        display: flex;
+        gap: 20px;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .section-heading h2 {
+        font-size: clamp(1.75rem, 3vw, 2.7rem);
+      }
+
+      .section-heading p {
+        color: var(--muted);
+        margin: 8px 0 0;
+        max-width: 670px;
+      }
+
+      .role-switcher {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .role-filter {
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        color: var(--muted);
+        cursor: pointer;
+        font-weight: 900;
+        padding: 9px 12px;
+      }
+
+      .role-filter.active {
+        background: var(--teal-dark);
+        color: white;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid.four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: 0 10px 28px rgba(18, 49, 51, 0.06);
+        padding: 20px;
+      }
+
+      .card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+      }
+
+      .card p {
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .tag {
+        background: var(--teal-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--teal-dark);
+        display: inline-flex;
+        font-size: 0.75rem;
+        font-weight: 900;
+        margin-bottom: 12px;
+        padding: 5px 9px;
+        text-transform: uppercase;
+      }
+
+      .route-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .route {
+        align-items: center;
+        background: var(--surface-strong);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        padding: 10px 12px;
+      }
+
+      .route code {
+        color: var(--teal-dark);
+        font-size: 0.9rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .route span {
+        color: var(--muted);
+        font-size: 0.86rem;
+        text-align: right;
+      }
+
+      .flow-band {
+        background: var(--ink);
+        border-radius: var(--radius);
+        color: white;
+        overflow: hidden;
+      }
+
+      .flow-band-inner {
+        display: grid;
+        gap: 1px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .flow-node {
+        background: rgba(255, 255, 255, 0.08);
+        min-height: 180px;
+        padding: 20px;
+      }
+
+      .flow-node strong {
+        display: block;
+        font-size: 1.02rem;
+        margin-bottom: 8px;
+      }
+
+      .flow-node span {
+        color: rgba(255, 255, 255, 0.72);
+        display: block;
+        font-size: 0.92rem;
+      }
+
+      .flow-number {
+        align-items: center;
+        background: var(--teal);
+        border-radius: 999px;
+        display: flex;
+        font-size: 0.85rem;
+        font-weight: 900;
+        height: 30px;
+        justify-content: center;
+        margin-bottom: 18px;
+        width: 30px;
+      }
+
+      .playbook {
+        display: grid;
+        gap: 16px;
+      }
+
+      .playbook-card {
+        background: white;
+        border: 1px solid var(--line);
+        border-left: 5px solid var(--teal);
+        border-radius: var(--radius);
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 190px 1fr;
+        padding: 18px;
+      }
+
+      .playbook-card h3 {
+        font-size: 1.15rem;
+      }
+
+      .playbook-card ol,
+      .playbook-card ul,
+      .checklist {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .playbook-card li,
+      .checklist li {
+        margin: 8px 0;
+      }
+
+      .callout {
+        border-radius: var(--radius);
+        margin-top: 16px;
+        padding: 16px;
+      }
+
+      .callout.info {
+        background: var(--teal-soft);
+        border: 1px solid var(--line);
+      }
+
+      .callout.warning {
+        background: var(--warning-soft);
+        border: 1px solid #fed7aa;
+        color: #7c2d12;
+      }
+
+      .callout.danger {
+        background: var(--danger-soft);
+        border: 1px solid #fecaca;
+        color: #7f1d1d;
+      }
+
+      .callout.success {
+        background: var(--success-soft);
+        border: 1px solid #b7efd5;
+        color: #0f5132;
+      }
+
+      .status-table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      .status-table th,
+      .status-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 13px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .status-table th {
+        color: var(--teal-dark);
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status-table td {
+        color: var(--muted);
+      }
+
+      .status-table code,
+      .chip {
+        background: var(--teal-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--teal-dark);
+        display: inline-flex;
+        font-size: 0.78rem;
+        font-weight: 900;
+        padding: 4px 8px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 14px;
+        position: relative;
+      }
+
+      .timeline-item {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 44px 1fr;
+        padding: 16px;
+      }
+
+      .timeline-index {
+        align-items: center;
+        background: var(--teal-soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--teal-dark);
+        display: flex;
+        font-weight: 900;
+        height: 36px;
+        justify-content: center;
+        width: 36px;
+      }
+
+      .timeline-item h3 {
+        font-size: 1.05rem;
+        margin-bottom: 5px;
+      }
+
+      .timeline-item p {
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .support-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1.15fr 0.85fr;
+      }
+
+      details {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 0;
+      }
+
+      details + details {
+        margin-top: 10px;
+      }
+
+      summary {
+        cursor: pointer;
+        font-weight: 900;
+        padding: 16px 18px;
+      }
+
+      details p,
+      details ul,
+      details ol {
+        color: var(--muted);
+        margin: 0;
+        padding: 0 18px 18px 38px;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        margin-top: 42px;
+        padding-top: 24px;
+      }
+
+      .hide {
+        display: none !important;
+      }
+
+      @media (max-width: 980px) {
+        .hero,
+        .grid.two,
+        .grid.three,
+        .grid.four,
+        .support-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero {
+          min-height: 0;
+          padding-top: 38px;
+        }
+
+        .hero-visual {
+          min-height: 520px;
+        }
+
+        .quick-stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .flow-band-inner {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-node {
+          min-height: auto;
+        }
+
+        .playbook-card {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .topbar-inner {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .section-heading {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .quick-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .route {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .route span {
+          text-align: left;
+        }
+
+        .status-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+      }
+
+      @media print {
+        .topbar,
+        .hero-actions,
+        .role-switcher {
+          display: none;
+        }
+
+        body {
+          background: white;
+        }
+
+        .page {
+          max-width: none;
+          padding: 0;
+        }
+
+        .hero,
+        .section {
+          break-inside: avoid;
+          padding: 22px 0;
+        }
+
+        .card,
+        .playbook-card,
+        .timeline-item {
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#manual">Skip to manual</a>
+    <header class="topbar" aria-label="Manual navigation">
+      <div class="topbar-inner">
+        <a class="brand" href="#top" aria-label="Washioo manual home">
+          <span class="brand-mark">W</span>
+          <span class="brand-name">
+            <strong>Washioo Manual</strong>
+            <span>Customer, cleaner, admin guide</span>
+          </span>
+        </a>
+        <nav class="nav-links">
+          <a href="#overview">Overview</a>
+          <a href="#roles">Roles</a>
+          <a href="#customer">Customer</a>
+          <a href="#cleaner">Cleaner</a>
+          <a href="#admin">Admin</a>
+          <a href="#operations">Operations</a>
+          <a href="#support">Support</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page" id="top">
+      <section class="hero" id="manual">
+        <div class="hero-copy">
+          <span class="eyebrow">Doorstep vehicle care platform</span>
+          <h1>Understand, use, and operate Washioo with one clear manual.</h1>
+          <p>
+            This page explains how the Washioo application works for customers,
+            cleaners, administrators, and client teams. It is designed for quick
+            onboarding, support handover, and day-to-day operations without a
+            long PDF or Word document.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#roles">Start by role</a>
+            <a class="button secondary" href="#lifecycle">See booking lifecycle</a>
+            <a class="button secondary" href="#support">Troubleshooting</a>
+          </div>
+          <div class="quick-stats" aria-label="Application highlights">
+            <div class="metric">
+              <strong>3</strong>
+              <span>Main roles</span>
+            </div>
+            <div class="metric">
+              <strong>OTP</strong>
+              <span>Phone login</span>
+            </div>
+            <div class="metric">
+              <strong>Live</strong>
+              <span>Cleaner assignment</span>
+            </div>
+            <div class="metric">
+              <strong>360</strong>
+              <span>Payments, ratings, reports</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Washioo application preview">
+          <div class="phone-shell">
+            <div class="phone-screen">
+              <div class="screen-top">
+                <span class="brand-mark">W</span>
+                <span class="screen-pill">Live booking</span>
+              </div>
+              <div class="screen-title">
+                <strong>Premium car and bike wash at the doorstep</strong>
+                <span>Book, assign, clean, collect, reconcile.</span>
+              </div>
+              <div class="service-row">
+                <strong>Customer books service</strong>
+                <span>Service, address, vehicle, date, time, instructions</span>
+              </div>
+              <div class="service-row">
+                <strong>Cleaner accepts assignment</strong>
+                <span>Location enabled, approved, available, inside radius</span>
+              </div>
+              <div class="status-row">
+                <strong>Admin monitors operations</strong>
+                <span>Bookings, cleaners, payments, services, users, ratings</span>
+              </div>
+              <div class="mock-progress">
+                <div class="mock-step">
+                  <i class="mock-dot" aria-hidden="true"></i>
+                  <span>Assigned automatically</span>
+                </div>
+                <div class="mock-step">
+                  <i class="mock-dot" aria-hidden="true"></i>
+                  <span>Service in progress</span>
+                </div>
+                <div class="mock-step">
+                  <i class="mock-dot pending" aria-hidden="true"></i>
+                  <span>Payment reconciliation pending</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="overview">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">System overview</span>
+            <h2>What Washioo does</h2>
+            <p>
+              Washioo is a doorstep vehicle wash platform. Customers book car or
+              bike wash services, cleaners receive nearby work based on
+              approval, availability, and location, and admins control service
+              setup, booking assignment, verification, payments, reports, and
+              platform health.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid four">
+          <article class="card">
+            <span class="tag">Customer</span>
+            <h3>Book and track service</h3>
+            <p>
+              Customers verify phone number, choose a service, save address and
+              vehicle details, schedule the wash, track status, view cleaner
+              details, and rate after completion.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Cleaner</span>
+            <h3>Accept and complete jobs</h3>
+            <p>
+              Cleaners sign up with identity documents, wait for approval, go
+              available with live location, accept assignments, start service,
+              complete service, and record cash or UPI collection.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Admin</span>
+            <h3>Operate the platform</h3>
+            <p>
+              Admins approve cleaners, manage services, monitor bookings, retry
+              auto assignment, manually assign when needed, reconcile payments,
+              export data, and review ratings.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Backend</span>
+            <h3>Secured API layer</h3>
+            <p>
+              The backend provides OTP authentication, role access, bookings,
+              addresses, cleaner verification, auto assignment, payments,
+              ratings, notifications, and admin reporting under
+              <code>/washioo-api</code>.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="lifecycle">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Booking lifecycle</span>
+            <h2>From booking to payment close</h2>
+            <p>
+              This is the main operational flow everyone should understand.
+              Most support questions can be answered by locating the booking in
+              this lifecycle.
+            </p>
+          </div>
+        </div>
+
+        <div class="flow-band">
+          <div class="flow-band-inner">
+            <div class="flow-node">
+              <div class="flow-number">1</div>
+              <strong>Customer creates booking</strong>
+              <span>
+                Select service, address, vehicle, date/time, and optional
+                instructions. Unsaved checkout addresses are saved before
+                booking.
+              </span>
+            </div>
+            <div class="flow-node">
+              <div class="flow-number">2</div>
+              <strong>System tries auto assignment</strong>
+              <span>
+                Eligible cleaners must be approved, available, auto assignment
+                enabled, recently located, and inside service radius.
+              </span>
+            </div>
+            <div class="flow-node">
+              <div class="flow-number">3</div>
+              <strong>Cleaner accepts or rejects</strong>
+              <span>
+                If accepted, the job moves forward. If rejected, the backend
+                offers it to the next eligible cleaner automatically.
+              </span>
+            </div>
+            <div class="flow-node">
+              <div class="flow-number">4</div>
+              <strong>Cleaner starts and completes</strong>
+              <span>
+                Cleaner can open route, start service, enter collected amount,
+                choose cash or UPI, and mark the service completed.
+              </span>
+            </div>
+            <div class="flow-node">
+              <div class="flow-number">5</div>
+              <strong>Admin reconciles payment</strong>
+              <span>
+                Admin reviews collected payments, enters cleaner share, confirms
+                admin share, and marks admin collection settled.
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="roles">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Role guide</span>
+            <h2>Choose who is reading</h2>
+            <p>
+              Use these buttons during onboarding meetings. They filter the
+              manual to the sections most relevant to that person.
+            </p>
+          </div>
+          <div class="role-switcher" aria-label="Filter manual by role">
+            <button class="role-filter active" data-role="all" type="button">All</button>
+            <button class="role-filter" data-role="customer" type="button">Customer</button>
+            <button class="role-filter" data-role="cleaner" type="button">Cleaner</button>
+            <button class="role-filter" data-role="admin" type="button">Admin</button>
+          </div>
+        </div>
+
+        <div class="grid three">
+          <article class="card role-block" data-audience="customer">
+            <span class="tag">For customers</span>
+            <h3>Read this if you book washes</h3>
+            <p>
+              You need phone OTP access, saved address with live location,
+              optional vehicle details, booking schedule, My Bookings tracking,
+              payment awareness, and rating after completion.
+            </p>
+          </article>
+          <article class="card role-block" data-audience="cleaner">
+            <span class="tag">For cleaners</span>
+            <h3>Read this if you perform jobs</h3>
+            <p>
+              You need document upload, approval status, location permission,
+              availability, assignment acceptance, route opening, start/complete
+              actions, collection entry, earnings, and customer rating.
+            </p>
+          </article>
+          <article class="card role-block" data-audience="admin">
+            <span class="tag">For admins</span>
+            <h3>Read this if you operate Washioo</h3>
+            <p>
+              You need cleaner verification, service setup, booking monitoring,
+              assignment fallback, payment split, exports, user/rating review,
+              and cleanup awareness.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section role-block" data-audience="customer" id="customer">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Customer manual</span>
+            <h2>How customers use Washioo</h2>
+            <p>
+              Customers should complete the steps in order. The most important
+              rule is simple: save a complete address with live location before
+              expecting clean assignment and routing.
+            </p>
+          </div>
+        </div>
+
+        <div class="playbook">
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 1</span>
+              <h3>Verify phone</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open the app and choose customer account type.</li>
+                <li>Enter a valid 10-digit Indian mobile number.</li>
+                <li>Accept the terms and continue.</li>
+                <li>Enter the OTP received by SMS.</li>
+              </ol>
+              <div class="callout info">
+                Existing customers go to sign in. New customers go to sign up
+                and enter name, optional email, and OTP.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 2</span>
+              <h3>Manage address</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Go to <strong>Addresses</strong>.</li>
+                <li>Add label, street, city, state, and pincode.</li>
+                <li>Use <strong>Live Location</strong> so the cleaner can find the service point.</li>
+                <li>Set the most used address as default.</li>
+              </ol>
+              <div class="callout warning">
+                If browser location permission is blocked, booking assignment
+                can fail or routing may be inaccurate. Enable location and save
+                again.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 3</span>
+              <h3>Manage vehicles</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Go to <strong>Vehicles</strong>.</li>
+                <li>Add bike or car, make, model, and license plate if available.</li>
+                <li>Mark the regular vehicle as default.</li>
+              </ol>
+              <p>
+                Vehicle details are optional during checkout, but adding them
+                helps the cleaner identify the vehicle quickly.
+              </p>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 4</span>
+              <h3>Book service</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open <strong>Book Service</strong> or <strong>Bookings</strong>.</li>
+                <li>Select the required service category.</li>
+                <li>Confirm address, optional vehicle, date, time, and notes.</li>
+                <li>Click <strong>Confirm Booking</strong>.</li>
+                <li>Track booking from <strong>My Bookings</strong>.</li>
+              </ol>
+              <div class="callout success">
+                After a cleaner accepts, customer booking details can show the
+                cleaner name, profile photo, rating, experience count, and
+                verification badge.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 5</span>
+              <h3>After completion</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Check payment status after cleaner marks service completed.</li>
+                <li>View whether payment was recorded as cash or UPI.</li>
+                <li>Rate the cleaner from the completed booking details.</li>
+              </ol>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>Customer screens</h3>
+            <div class="route-list">
+              <div class="route"><code>/verify-phone</code><span>Phone and role selection</span></div>
+              <div class="route"><code>/dashboard</code><span>Customer overview, quick actions, services</span></div>
+              <div class="route"><code>/bookings</code><span>Browse services and start booking</span></div>
+              <div class="route"><code>/checkout</code><span>Confirm address, vehicle, schedule, instructions</span></div>
+              <div class="route"><code>/my-bookings</code><span>Track booking list</span></div>
+              <div class="route"><code>/customer/bookings/:id</code><span>Booking details, cleaner details, payment, rating</span></div>
+              <div class="route"><code>/addresses</code><span>Saved addresses and live location</span></div>
+              <div class="route"><code>/vehicles</code><span>Customer vehicles</span></div>
+              <div class="route"><code>/profile</code><span>Customer profile</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Customer support checklist</h3>
+            <ul class="checklist">
+              <li>Phone number should be 10 digits without country code.</li>
+              <li>Terms must be accepted before OTP flow continues.</li>
+              <li>Address must include live latitude and longitude.</li>
+              <li>Booking date and time must not be in the past.</li>
+              <li>If no cleaner is assigned, admin can retry Auto Assign.</li>
+              <li>Rating appears after booking status is completed.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section role-block" data-audience="cleaner" id="cleaner">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Cleaner manual</span>
+            <h2>How cleaners handle work</h2>
+            <p>
+              Cleaners only become eligible for auto assignment after document
+              approval, availability update, and location sharing.
+            </p>
+          </div>
+        </div>
+
+        <div class="playbook">
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 1</span>
+              <h3>Cleaner signup</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Choose cleaner account type in phone verification.</li>
+                <li>Enter phone number, accept terms, and verify OTP.</li>
+                <li>Provide full name, optional email, Aadhaar number, profile photo, and Aadhaar image.</li>
+                <li>Add driving license number and image when required or available.</li>
+              </ol>
+              <div class="callout info">
+                Image uploads accept JPG, PNG, and WebP. The default maximum
+                file size is 3 MB unless backend configuration changes it.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 2</span>
+              <h3>Wait for approval</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open <strong>Profile</strong> to check document review status.</li>
+                <li>If admin requests resubmission, read the reason shown in Profile.</li>
+                <li>Upload corrected profile photo, Aadhaar, or license documents.</li>
+              </ol>
+              <div class="callout warning">
+                Availability and booking acceptance are blocked until the
+                cleaner profile is approved.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 3</span>
+              <h3>Go available</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open <strong>Cleaner Dashboard</strong> or <strong>Availability</strong>.</li>
+                <li>Allow browser location access.</li>
+                <li>Set status to <strong>Available</strong>.</li>
+                <li>Keep the app/browser available so location can refresh.</li>
+              </ol>
+              <p>
+                The dashboard refreshes cleaner location every few minutes when
+                the cleaner is approved and available.
+              </p>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 4</span>
+              <h3>Handle assignment</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open <strong>My Assignments</strong>.</li>
+                <li>Use tabs: assigned, accepted, in progress, completed, rejected.</li>
+                <li>For new assigned work, click <strong>Accept</strong> or <strong>Reject</strong>.</li>
+                <li>After accepting, open route and go to the customer address.</li>
+                <li>Click <strong>Start Service</strong> before beginning work.</li>
+              </ol>
+              <div class="callout info">
+                If a cleaner rejects a booking, the backend records the attempt
+                and immediately tries the next eligible cleaner.
+              </div>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Step 5</span>
+              <h3>Complete and collect</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Enter the final collected amount.</li>
+                <li>Select payment type: cash or UPI.</li>
+                <li>Click <strong>Complete Service</strong>.</li>
+                <li>Rate the customer after completion.</li>
+                <li>Check earnings after admin reconciles payment.</li>
+              </ol>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>Cleaner screens</h3>
+            <div class="route-list">
+              <div class="route"><code>/cleaner/dashboard</code><span>Status, live services, stats, earnings</span></div>
+              <div class="route"><code>/cleaner/assignments</code><span>Accept, reject, start, complete, rate</span></div>
+              <div class="route"><code>/cleaner/bookings/:id</code><span>Booking details and route information</span></div>
+              <div class="route"><code>/cleaner/availability</code><span>Availability and location capture</span></div>
+              <div class="route"><code>/cleaner/history</code><span>Past work history</span></div>
+              <div class="route"><code>/cleaner/profile</code><span>Profile, identity documents, review status</span></div>
+              <div class="route"><code>/notifications</code><span>Notifications for work updates</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Cleaner eligibility rules</h3>
+            <ul class="checklist">
+              <li>Approval status must be <span class="chip">approved</span>.</li>
+              <li>Availability status must be <span class="chip">available</span>.</li>
+              <li>Auto assignment must be enabled for the cleaner profile.</li>
+              <li>Current latitude and longitude must be present.</li>
+              <li>Location must be updated within the freshness window.</li>
+              <li>Booking address must have latitude and longitude.</li>
+              <li>Cleaner must be inside service radius.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section role-block" data-audience="admin" id="admin">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Admin manual</span>
+            <h2>How admins operate Washioo</h2>
+            <p>
+              Admins are responsible for keeping the platform moving: approved
+              cleaners, active services, assigned bookings, reconciled payments,
+              clean data, and export-ready reporting.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid three">
+          <article class="card">
+            <span class="tag">Dashboard</span>
+            <h3>Platform overview</h3>
+            <p>
+              View total bookings, pending jobs, active jobs, completed jobs,
+              cleaner counts, available cleaners, revenue, recent bookings, and
+              Excel exports.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Bookings</span>
+            <h3>Assignment control</h3>
+            <p>
+              Search bookings, filter by status, view customer and service
+              details, retry Auto Assign for pending bookings, or manually
+              assign an available cleaner.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Cleaners</span>
+            <h3>Verification and availability</h3>
+            <p>
+              Review identity documents, approve, reject, request
+              resubmission, suspend/reactivate cleaners, and adjust cleaner
+              availability when business support needs to intervene.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Services</span>
+            <h3>Service catalog</h3>
+            <p>
+              Add or edit service categories, base price, duration, active
+              state, service image, and optional extra payment instructions.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Payments</span>
+            <h3>Reconciliation</h3>
+            <p>
+              Review collected payments, split cleaner and admin shares, and
+              mark admin share as collected from the cleaner.
+            </p>
+          </article>
+          <article class="card">
+            <span class="tag">Reports</span>
+            <h3>Exports and review</h3>
+            <p>
+              Download full or dataset-specific Excel workbooks covering users,
+              cleaners, bookings, ratings, and payments for offline review.
+            </p>
+          </article>
+        </div>
+
+        <div class="playbook" style="margin-top: 16px">
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Daily routine</span>
+              <h3>Start of day</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open Admin Dashboard and check pending bookings.</li>
+                <li>Check approved and available cleaner count.</li>
+                <li>Review new cleaner profiles and pending document updates.</li>
+                <li>Confirm service categories are active and priced correctly.</li>
+              </ol>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">During operations</span>
+              <h3>Booking support</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Use the Bookings page status tabs to find pending, assigned, accepted, in progress, completed, or cancelled work.</li>
+                <li>For pending bookings, click <strong>Auto Assign</strong> first.</li>
+                <li>Use manual assignment only when the auto pool is exhausted, cleaners are offline or busy, location is missing, or support must override.</li>
+                <li>After completion, direct payment questions to the Payments page.</li>
+              </ol>
+            </div>
+          </article>
+
+          <article class="playbook-card">
+            <div>
+              <span class="tag">Payment close</span>
+              <h3>End of day</h3>
+            </div>
+            <div>
+              <ol>
+                <li>Open Payments and filter collected payments.</li>
+                <li>Enter cleaner share. Admin share is calculated from collected amount.</li>
+                <li>Confirm split.</li>
+                <li>When admin receives the admin share from cleaner, mark it collected.</li>
+                <li>Download exports when finance or management needs reports.</li>
+              </ol>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>Admin screens</h3>
+            <div class="route-list">
+              <div class="route"><code>/admin/login</code><span>Admin OTP sign in</span></div>
+              <div class="route"><code>/admin/dashboard</code><span>KPIs, exports, recent bookings</span></div>
+              <div class="route"><code>/admin/bookings</code><span>Search, assign, auto assign, payment handoff</span></div>
+              <div class="route"><code>/admin/cleaners</code><span>Cleaner approval and document review</span></div>
+              <div class="route"><code>/admin/services</code><span>Service categories, pricing, images, active state</span></div>
+              <div class="route"><code>/admin/payments</code><span>Payment split and admin collection status</span></div>
+              <div class="route"><code>/admin/users</code><span>User management</span></div>
+              <div class="route"><code>/admin/ratings</code><span>Ratings and feedback review</span></div>
+              <div class="route"><code>/admin/settings</code><span>Admin settings and maintenance controls</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Cleaner document review actions</h3>
+            <ul class="checklist">
+              <li><strong>Approve:</strong> Use when identity and required images are valid.</li>
+              <li><strong>Reject:</strong> Use when cleaner should not proceed. A reason is required.</li>
+              <li><strong>Request resubmission:</strong> Use when the cleaner can correct missing or unclear documents. A reason is required.</li>
+              <li><strong>Suspend:</strong> Use for approved cleaners who should temporarily stop receiving work.</li>
+              <li><strong>Reactivate:</strong> Move suspended cleaners back to approved when ready.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="operations">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Operations reference</span>
+            <h2>Status, backend, and data flow</h2>
+            <p>
+              These tables help support teams explain what is happening behind
+              the screen and what action should be taken next.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <article class="card">
+            <h3>Booking statuses</h3>
+            <table class="status-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Meaning</th>
+                  <th>Who acts next</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>pending</code></td>
+                  <td>Booking created, no cleaner accepted yet.</td>
+                  <td>System auto assignment or admin retry/manual assign.</td>
+                </tr>
+                <tr>
+                  <td><code>assigned</code></td>
+                  <td>Cleaner has been offered the booking.</td>
+                  <td>Cleaner accepts or rejects.</td>
+                </tr>
+                <tr>
+                  <td><code>accepted</code></td>
+                  <td>Cleaner accepted and should travel to service location.</td>
+                  <td>Cleaner opens route and starts service.</td>
+                </tr>
+                <tr>
+                  <td><code>in_progress</code></td>
+                  <td>Cleaner started the service.</td>
+                  <td>Cleaner completes service and records collection.</td>
+                </tr>
+                <tr>
+                  <td><code>completed</code></td>
+                  <td>Service is finished.</td>
+                  <td>Customer/cleaner rating, admin payment reconciliation.</td>
+                </tr>
+                <tr>
+                  <td><code>cancelled</code></td>
+                  <td>Booking no longer active.</td>
+                  <td>Support reviews reason if needed.</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card">
+            <h3>Payment statuses</h3>
+            <table class="status-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Meaning</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>pending_collection</code></td>
+                  <td>No completed collection recorded yet.</td>
+                  <td>Cleaner completes service and enters amount.</td>
+                </tr>
+                <tr>
+                  <td><code>collected</code></td>
+                  <td>Cleaner recorded cash or UPI collection.</td>
+                  <td>Admin enters cleaner share and confirms split.</td>
+                </tr>
+                <tr>
+                  <td><code>split_done</code></td>
+                  <td>Cleaner/admin shares are calculated and saved.</td>
+                  <td>Admin collects admin share from cleaner if pending.</td>
+                </tr>
+                <tr>
+                  <td><code>settled</code></td>
+                  <td>Admin share has been collected.</td>
+                  <td>No payment action required.</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+
+        <div class="grid two" style="margin-top: 16px">
+          <article class="card">
+            <h3>Backend architecture in plain words</h3>
+            <ul class="checklist">
+              <li><strong>Routers:</strong> API endpoints for auth, services, customer, cleaner, admin, payments, ratings, and realtime sockets.</li>
+              <li><strong>Services:</strong> Business rules such as OTP, booking lifecycle, cleaner assignment, payments, ratings, notifications, and storage.</li>
+              <li><strong>Repositories:</strong> Database access for users, bookings, cleaners, payments, addresses, vehicles, notifications, and assignments.</li>
+              <li><strong>Models:</strong> PostgreSQL-backed SQLAlchemy models for core data.</li>
+              <li><strong>Schemas:</strong> Pydantic request and response shapes used by the API.</li>
+              <li><strong>Migrations:</strong> SQL migration files define schema changes like vehicles, payment splits, auto assignment, push notifications, and document verification.</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <h3>Important backend endpoints</h3>
+            <div class="route-list">
+              <div class="route"><code>/washioo-api/auth/send-otp</code><span>Send OTP</span></div>
+              <div class="route"><code>/washioo-api/auth/signin</code><span>Login with OTP</span></div>
+              <div class="route"><code>/washioo-api/services</code><span>Public service categories</span></div>
+              <div class="route"><code>/washioo-api/services/book</code><span>Create customer booking</span></div>
+              <div class="route"><code>/washioo-api/services/my-bookings</code><span>Customer booking list</span></div>
+              <div class="route"><code>/washioo-api/services/cleaner/assignments</code><span>Cleaner work list</span></div>
+              <div class="route"><code>/washioo-api/services/admin/all-bookings</code><span>Admin booking operations</span></div>
+              <div class="route"><code>/washioo-api/services/admin/bookings/:id/auto-assign</code><span>Retry cleaner matching</span></div>
+              <div class="route"><code>/washioo-api/payments</code><span>Payment management</span></div>
+              <div class="route"><code>/washioo-api/bookings/:id/ratings</code><span>Customer/cleaner rating</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="callout info">
+          <strong>Security summary:</strong> Washioo uses OTP authentication,
+          short-lived access tokens, refresh token rotation, role-based access,
+          audit logging, rate limiting, CORS controls, input validation, and
+          secured document upload validation.
+        </div>
+      </section>
+
+      <section class="section" id="support">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Support playbook</span>
+            <h2>Common issues and quick fixes</h2>
+            <p>
+              Use this section when someone says, "It is not working." Start
+              with their role, then locate the exact stage of the workflow.
+            </p>
+          </div>
+        </div>
+
+        <div class="support-grid">
+          <div>
+            <details open>
+              <summary>Customer cannot receive or verify OTP</summary>
+              <ol>
+                <li>Confirm phone number is 10 digits without country code.</li>
+                <li>Confirm terms checkbox is selected before sending OTP.</li>
+                <li>Ask user to wait for resend cooldown before requesting again.</li>
+                <li>Check SMSCountry credentials and credits if OTP delivery fails globally.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>Booking stays pending</summary>
+              <ol>
+                <li>Check if booking address has latitude and longitude.</li>
+                <li>Check if approved cleaners are available and recently located.</li>
+                <li>Ask admin to click Auto Assign.</li>
+                <li>If auto assignment skips, manually assign an available cleaner only after checking availability and distance.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>Cleaner is not receiving jobs</summary>
+              <ol>
+                <li>Confirm cleaner approval status is approved.</li>
+                <li>Confirm cleaner is set to available, not offline or busy.</li>
+                <li>Confirm browser location permission is allowed.</li>
+                <li>Confirm cleaner is inside service radius and location is fresh.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>Cleaner documents are rejected or pending</summary>
+              <ol>
+                <li>Admin should open cleaner details and write a clear reason.</li>
+                <li>Cleaner should re-upload corrected image and number from Profile.</li>
+                <li>Admin should approve after validating photo, Aadhaar, and license if required.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>Payment does not show as settled</summary>
+              <ol>
+                <li>Confirm cleaner completed service and entered collected amount.</li>
+                <li>Admin opens Payments and confirms split.</li>
+                <li>Admin marks admin share collected after receiving it from cleaner.</li>
+              </ol>
+            </details>
+          </div>
+
+          <aside class="card">
+            <h3>Handover checklist for clients</h3>
+            <ul class="checklist">
+              <li>Share app URL and this manual URL/file.</li>
+              <li>Explain the three roles before showing screens.</li>
+              <li>Create one test customer booking together.</li>
+              <li>Create or approve one cleaner profile.</li>
+              <li>Show Auto Assign and manual assignment fallback.</li>
+              <li>Complete one test service and reconcile payment.</li>
+              <li>Show exports and where support should check statuses.</li>
+              <li>Confirm who owns SMS, Supabase storage, database, and deployment credentials.</li>
+            </ul>
+            <div class="callout warning">
+              Keep admin access limited. Admin users can approve cleaners,
+              change services, update bookings, reconcile payments, and export
+              sensitive operational data.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section" id="maintenance">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Maintenance</span>
+            <h2>What the technical team should remember</h2>
+            <p>
+              These notes are for project owners and developers who maintain
+              deployments, API settings, and production support.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid three">
+          <article class="card">
+            <h3>Required services</h3>
+            <ul class="checklist">
+              <li>PostgreSQL database</li>
+              <li>FastAPI backend</li>
+              <li>React/Vite frontend</li>
+              <li>SMSCountry OTP credentials</li>
+              <li>Supabase Storage for cleaner/service images</li>
+              <li>Optional Web Push VAPID keys for cleaner notifications</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Important environment items</h3>
+            <ul class="checklist">
+              <li><code>DATABASE_URL</code></li>
+              <li><code>SECRET_KEY</code></li>
+              <li><code>SMS_COUNTRY_KEY</code> and <code>SMS_COUNTRY_TOKEN</code></li>
+              <li><code>SUPABASE_URL</code> and service role key</li>
+              <li><code>SUPABASE_STORAGE_BUCKET</code></li>
+              <li><code>DRIVING_LICENSE_REQUIRED</code></li>
+              <li>CORS origins for deployed frontend domains</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Admin export datasets</h3>
+            <ul class="checklist">
+              <li>Full workbook</li>
+              <li>Cleaners</li>
+              <li>Bookings</li>
+              <li>Ratings</li>
+              <li>Users</li>
+              <li>Payments</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p>
+          Washioo Application Manual. Built from the current frontend routes,
+          backend flow documentation, API structure, cleaner verification flow,
+          booking assignment flow, payment reconciliation flow, and admin tools.
+        </p>
+      </footer>
+    </main>
+
+    <script>
+      const filters = document.querySelectorAll(".role-filter");
+      const roleBlocks = document.querySelectorAll(".role-block");
+
+      filters.forEach((button) => {
+        button.addEventListener("click", () => {
+          const role = button.dataset.role;
+
+          filters.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+
+          roleBlocks.forEach((block) => {
+            const audience = block.dataset.audience;
+            const shouldShow = role === "all" || audience === role;
+            block.classList.toggle("hide", !shouldShow);
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

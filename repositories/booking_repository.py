@@ -1,7 +1,19 @@
 from models.booking import Booking
 from models.booking_assignment import BookingAssignment
 from models.cleaner_profile import CleanerProfile
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, selectinload
+
+INACTIVE_ASSIGNMENT_STATUSES = ["rejected", "cancelled"]
+
+
+def _unassigned_booking_filter():
+    return or_(
+        ~Booking.assignment.has(),
+        Booking.assignment.has(
+            BookingAssignment.assignment_status.in_(INACTIVE_ASSIGNMENT_STATUSES)
+        ),
+    )
 
 def create_booking(db, booking_data):
     """Create a new booking"""
@@ -97,6 +109,46 @@ def get_bookings_by_status(db, status, limit=50, offset=0):
 def count_bookings_by_status(db, status):
     """Count bookings by status before pagination."""
     return db.query(Booking).filter(Booking.booking_status == status).count()
+
+def get_stale_unassigned_bookings(db, cutoff, limit=100):
+    """Get pending bookings that have not received a cleaner assignment."""
+    return (
+        db.query(Booking)
+        .options(
+            selectinload(Booking.customer),
+            selectinload(Booking.service_category),
+            selectinload(Booking.address),
+            selectinload(Booking.assignment),
+        )
+        .filter(
+            Booking.booking_status == "pending",
+            Booking.created_at <= cutoff,
+            _unassigned_booking_filter(),
+        )
+        .order_by(Booking.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+def cancel_stale_unassigned_booking(db, booking_id, cutoff):
+    """Cancel a booking only if it is still pending and unassigned."""
+    booking = (
+        db.query(Booking)
+        .filter(
+            Booking.id == booking_id,
+            Booking.booking_status == "pending",
+            Booking.created_at <= cutoff,
+            _unassigned_booking_filter(),
+        )
+        .first()
+    )
+    if not booking:
+        return None
+
+    booking.booking_status = "cancelled"
+    db.commit()
+    db.refresh(booking)
+    return booking
 
 def get_customer_booking_by_id(db, customer_id, booking_id):
     """Get one booking that belongs to a customer"""

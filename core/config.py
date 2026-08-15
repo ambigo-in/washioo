@@ -49,6 +49,10 @@ class Settings:
     WEB_PUSH_VAPID_PUBLIC_KEY = os.getenv("WEB_PUSH_VAPID_PUBLIC_KEY")
     WEB_PUSH_VAPID_SUBJECT = os.getenv("WEB_PUSH_VAPID_SUBJECT", "mailto:support@washioo.local")
 
+    BOOKING_AUTO_CANCEL_UNASSIGNED_HOURS = int(os.getenv("BOOKING_AUTO_CANCEL_UNASSIGNED_HOURS", 6))
+    BOOKING_AUTO_CANCEL_SWEEP_SECONDS = int(os.getenv("BOOKING_AUTO_CANCEL_SWEEP_SECONDS", 300))
+    BOOKING_AUTO_CANCEL_BATCH_SIZE = int(os.getenv("BOOKING_AUTO_CANCEL_BATCH_SIZE", 100))
+
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "cleaner-documents")
@@ -116,6 +120,12 @@ class Settings:
             raise RuntimeError("OTP_EXPIRY_MINUTES must be at least 1")
         if self.OTP_MAX_ATTEMPTS < 1:
             raise RuntimeError("OTP_MAX_ATTEMPTS must be at least 1")
+        if self.BOOKING_AUTO_CANCEL_UNASSIGNED_HOURS < 1:
+            raise RuntimeError("BOOKING_AUTO_CANCEL_UNASSIGNED_HOURS must be at least 1")
+        if self.BOOKING_AUTO_CANCEL_SWEEP_SECONDS < 30:
+            raise RuntimeError("BOOKING_AUTO_CANCEL_SWEEP_SECONDS must be at least 30")
+        if self.BOOKING_AUTO_CANCEL_BATCH_SIZE < 1:
+            raise RuntimeError("BOOKING_AUTO_CANCEL_BATCH_SIZE must be at least 1")
 
 settings = Settings()
 settings.validate()

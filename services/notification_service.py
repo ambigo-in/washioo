@@ -185,6 +185,23 @@ def notify_customer_booking_rejected(db, booking):
     )
 
 
+def notify_customer_booking_auto_cancelled(db, booking):
+    title = "Booking cancelled"
+    message = "Booking cancelled. Please book again for the service."
+    if getattr(booking, "booking_reference", None):
+        message = f"Booking {booking.booking_reference} cancelled. Please book again for the service."
+    url = f"/customer/bookings/{booking.id}"
+    return notify_user_booking_status_change(
+        db,
+        booking.customer_id,
+        title,
+        message,
+        "booking_auto_cancelled",
+        booking_id=booking.id,
+        url=url,
+    )
+
+
 def notify_admin_booking_assignment_accepted(db, assignment):
     booking = assignment.booking
     cleaner_name = None

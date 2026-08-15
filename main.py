@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, FastAPI, Request
@@ -14,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from core.config import settings
 from core.database import engine
 from core.rate_limiter import limiter
+from services.booking_auto_cancel_service import run_booking_auto_cancel_loop
 
 from models import (
     audit_log,
@@ -166,6 +168,29 @@ app.add_middleware(
     allow_headers=settings.CORS_HEADERS,
     expose_headers=["*"]
 )
+
+
+@app.on_event("startup")
+async def start_booking_auto_cancel_task():
+    stop_event = asyncio.Event()
+    app.state.booking_auto_cancel_stop_event = stop_event
+    app.state.booking_auto_cancel_task = asyncio.create_task(
+        run_booking_auto_cancel_loop(stop_event)
+    )
+
+
+@app.on_event("shutdown")
+async def stop_booking_auto_cancel_task():
+    task = getattr(app.state, "booking_auto_cancel_task", None)
+    stop_event = getattr(app.state, "booking_auto_cancel_stop_event", None)
+    if stop_event:
+        stop_event.set()
+    if task:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 # Routers
 api_router.include_router(auth_router)
